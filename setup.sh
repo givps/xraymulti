@@ -15,8 +15,6 @@ green='\e[0;32m'
 yellow='\e[1;33m'
 blue='\e[1;34m'
 nc='\e[0m'
-sudo apt update
-sudo apt install dos2unix -y
 # Getting
 MYIP=$(wget -qO- ipv4.icanhazip.com);
 #install tool
