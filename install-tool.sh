@@ -116,19 +116,19 @@ chown vps:vps /home/vps/.profile
 
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
-sudo systemctl stop nginx
-sudo apt remove --purge nginx nginx-full nginx-core nginx-common libnginx-mod-* -y
-sudo apt autoremove -y
-sudo rm -rf /etc/nginx
-sudo rm -rf /var/log/nginx
-sudo apt update
-sudo apt install nginx-full -y
+systemctl stop nginx
+apt remove --purge nginx nginx-full nginx-core nginx-common libnginx-mod-* -y
+apt autoremove -y
+rm -rf /etc/nginx
+rm -rf /var/log/nginx
+apt update
+apt install nginx-full -y
 
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
 apt install -y php8.1 php8.1-cli php8.1-fpm php8.1-mysql php8.1-curl php8.1-gd php8.1-mbstring php8.1-xml php8.1-zip -y
-sudo systemctl enable php8.1-fpm
-sudo systemctl start php8.1-fpm
+systemctl enable php8.1-fpm
+systemctl start php8.1-fpm
 
 # Download custom config
 curl -s -k https://${link}/nginx.conf -o /etc/nginx/nginx.conf
