@@ -24,7 +24,7 @@ done
 # ==============================
 DOMAIN="givps.com"
 CF_ZONE_ID="53c3aca6f94d04b0742e82cf6891c02a"
-CF_TOKEN="bBGz3zw-Hn8kRm19IPihy8bK9RIGdbL6ZzhMPfKc"
+CF_TOKEN="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
 IP=$(wget -qO- ipv4.icanhazip.com || curl -s ifconfig.me)
 
 mkdir -p /etc/xray /var/lib/vps
