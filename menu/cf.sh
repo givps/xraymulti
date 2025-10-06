@@ -1,0 +1,164 @@
+#!/bin/bash
+# ==============================
+# Auto update dns cloudflare
+# ==============================
+set -euo pipefail
+
+# ==============================
+# Colors
+# ==============================
+red='\e[1;31m'
+green='\e[0;32m'
+yellow='\e[1;33m'
+nc='\e[0m'
+
+# ==============================
+# Dependencies
+# ==============================
+command -v jq >/dev/null 2>&1 || { apt update; apt install -y jq; }
+command -v curl >/dev/null 2>&1 || { apt update; apt install -y curl; }
+command -v wget >/dev/null 2>&1 || { apt update; apt install -y wget; }
+
+# ==============================
+# Config
+# ==============================
+DOMAIN="givps.com"
+CF_ZONE_ID="53c3aca6f94d04b0742e82cf6891c02a"
+CF_TOKEN="zs5NCxjmO-9lspqfhNfbF60aKCobdfKVQyYKZg65"
+IP=$(wget -qO- ipv4.icanhazip.com || curl -s ifconfig.me)
+
+mkdir -p /etc/xray /var/lib/vps
+
+log() { echo -e "[${yellow}$(date '+%H:%M:%S')${nc}] $*"; }
+
+log "Public IP detected: ${green}$IP${nc}"
+
+# ==============================
+# Curl wrapper with retry
+# ==============================
+curl_retry() {
+    local CMD=("$@")
+    local MAX_RETRY=5 COUNT=0
+    until [ $COUNT -ge $MAX_RETRY ]; do
+        if RESPONSE=$( "${CMD[@]}" 2>/dev/null ); then
+            echo "$RESPONSE"
+            return 0
+        fi
+        COUNT=$((COUNT+1))
+        log "${red}Network/API call failed. Retry $COUNT/$MAX_RETRY...${nc}"
+        sleep 3
+    done
+    log "${red}Network/API failed after $MAX_RETRY retries. Exiting...${nc}"
+    exit 1
+}
+
+# ==============================
+# Generate random subdomain
+# ==============================
+generate_subdomain() {
+    echo "xray$(</dev/urandom tr -dc a-z0-9 | head -c5).${DOMAIN}"
+}
+
+log "Generating available subdomain..."
+
+# ==============================
+# Ensure subdomain available
+# ==============================
+while true; do
+    SUB_DOMAIN=$(generate_subdomain)
+    EXISTS=$(curl_retry curl -sLX GET \
+        "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${SUB_DOMAIN}" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -H "Content-Type: application/json" \
+        --fail --max-time 10 | jq -r '.result | length')
+    [[ "$EXISTS" -eq 0 ]] && break
+done
+
+WILDCARD_DOMAIN="*.${SUB_DOMAIN}"
+
+log "Subdomain selected: ${green}$SUB_DOMAIN${nc}"
+log "Wildcard domain: ${green}$WILDCARD_DOMAIN${nc}"
+log "Creating DNS records..."
+
+# ==============================
+# Create or update DNS record
+# ==============================
+create_or_update() {
+    local NAME=$1
+    local TYPE=$2
+    local CONTENT=$3
+    local RECORD_ID
+    RECORD_ID=$(curl_retry curl -sLX GET \
+        "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${NAME}" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -H "Content-Type: application/json" \
+        --fail --max-time 10 | jq -r '.result[0].id // empty')
+
+    local DATA="{\"type\":\"${TYPE}\",\"name\":\"${NAME}\",\"content\":\"${CONTENT}\",\"ttl\":120,\"proxied\":false}"
+
+    if [[ -z "$RECORD_ID" ]]; then
+        log "Creating new ${TYPE} record for ${NAME}..."
+        RESPONSE=$(curl_retry curl -sLX POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records" \
+            -H "Authorization: Bearer ${CF_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "$DATA" --fail --max-time 10)
+    else
+        log "Updating existing ${TYPE} record for ${NAME}..."
+        RESPONSE=$(curl_retry curl -sLX PUT \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${RECORD_ID}" \
+            -H "Authorization: Bearer ${CF_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "$DATA" --fail --max-time 10)
+    fi
+
+    # Return API result
+    echo "$RESPONSE" | jq -r '.success'
+}
+
+# ==============================
+# Create main A record
+# ==============================
+if [[ $(create_or_update "$SUB_DOMAIN" "A" "$IP") == "true" ]]; then
+    log "${green}Main A record created successfully.${nc}"
+else
+    log "${red}Failed to create main A record.${nc}"
+    exit 1
+fi
+
+# ==============================
+# Create wildcard A record (fallback to CNAME)
+# ==============================
+log "Attempting to create wildcard A record..."
+if [[ $(create_or_update "$WILDCARD_DOMAIN" "A" "$IP") == "true" ]]; then
+    log "${green}Wildcard A record created successfully.${nc}"
+else
+    log "${yellow}Wildcard A record failed — falling back to CNAME...${nc}"
+    if [[ $(create_or_update "$WILDCARD_DOMAIN" "CNAME" "$SUB_DOMAIN") == "true" ]]; then
+        log "${green}Wildcard CNAME created successfully.${nc}"
+    else
+        log "${red}Failed to create wildcard CNAME record.${nc}"
+    fi
+fi
+
+# ==============================
+# Save info
+# ==============================
+echo "$SUB_DOMAIN" > /etc/xray/domain
+echo "IP=$SUB_DOMAIN" > /var/lib/vps/ipvps.conf
+
+# ==============================
+# Log install
+# ==============================
+{
+    echo "============================="
+    echo " Domain Info"
+    echo "============================="
+    echo "Main Domain : $SUB_DOMAIN"
+    echo "Wildcard    : $WILDCARD_DOMAIN"
+    echo "Public IP   : $IP"
+    echo "Created at  : $(date)"
+    echo
+} >> /root/log-install.txt
+
+log "${green}Done!${nc} Domain ${green}$SUB_DOMAIN${nc} and wildcard ${green}$WILDCARD_DOMAIN${nc} created."
