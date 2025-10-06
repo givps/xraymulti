@@ -37,7 +37,7 @@ while true; do
     if [[ "$dns" == "1" ]]; then
         if wget -q https://raw.githubusercontent.com/givps/xraymulti/master/menu/cf.sh -O cf; then
             chmod +x cf
-            ./cf.sh
+            ./cf
         else
             echo "Failed to download cf script."
             exit 1
