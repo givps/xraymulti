@@ -21,7 +21,7 @@ while true; do
     read -rp "Input 1 or 2: " dns
 
     if [[ "$dns" == "1" ]]; then
-        if wget -q https://raw.githubusercontent.com/givps/AutoScriptXray/master/ssh/cf -O cf; then
+        if wget -q https://raw.githubusercontent.com/givps/AutoScriptXray/master/ssh/cf.sh -O cf; then
             chmod +x cf
             dos2unix ./cf
         else
