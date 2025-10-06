@@ -12,7 +12,7 @@ yellow='\e[1;33m'
 blue='\e[1;34m'
 nc='\e[0m'
 IPVPS=$(wget -qO- ipv4.icanhazip.com || curl -s ifconfig.me)
-domain="cat /etc/xray/domain"
+domain=$(cat /etc/xray/domain)
 
 # -------- Uptime --------
 updays=$(uptime -p | grep -oP '\d+(?= day)')
