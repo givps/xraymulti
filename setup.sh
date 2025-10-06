@@ -15,7 +15,8 @@ green='\e[0;32m'
 yellow='\e[1;33m'
 blue='\e[1;34m'
 nc='\e[0m'
-
+sudo apt update
+sudo apt install dos2unix -y
 # Getting
 MYIP=$(wget -qO- ipv4.icanhazip.com);
 #install tool
@@ -34,9 +35,9 @@ while true; do
     read -rp "Input 1 or 2: " dns
 
     if [[ "$dns" == "1" ]]; then
-        if wget -q https://raw.githubusercontent.com/givps/xraymulti/master/menu/cf -O cf; then
+        if wget -q https://raw.githubusercontent.com/givps/xraymulti/master/menu/cf.sh -O cf; then
             chmod +x cf
-            ./cf
+            ./cf.sh
         else
             echo "Failed to download cf script."
             exit 1
