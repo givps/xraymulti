@@ -140,3 +140,5 @@ chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
 
 echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
+
+
