@@ -414,8 +414,9 @@ systemctl restart xray.service
 
 # Reload dan restart nginx terakhir
 echo -e "[ ${green}INFO${nc} ] Reloading and restarting Nginx..."
-systemctl reload nginx || true
-systemctl restart nginx
+sudo systemctl stop nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
 
 # ===============================
 # Info services
