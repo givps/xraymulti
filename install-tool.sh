@@ -126,7 +126,7 @@ curl -s -k https://${link}/nginx.conf -o /etc/nginx/nginx.conf
 curl -s -k https://${link}/vps.conf -o /etc/nginx/conf.d/vps.conf
 
 # Adjust PHP-FPM listen
-sed -i 's|listen = /var/run/php-fpm.sock|listen = 127.0.0.1:9000|g' /etc/php/fpm/pool.d/www.conf
+sed -i 's/listen = .*/listen = \/run\/php\/php8.1-fpm.sock/' /etc/php/8.1/fpm/pool.d/www.conf
 
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
