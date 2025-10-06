@@ -14,7 +14,7 @@ echo "XRAY Core Installer"
 echo "Trojan"
 echo "Progress..."
 
-domain=$(cat /etc/xray/domain)
+domain="cat /etc/xray/domain"
 
 # ===============================
 # Instalasi paket & setting waktu
