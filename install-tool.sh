@@ -117,10 +117,8 @@ chown vps:vps /home/vps/.profile
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
 systemctl stop nginx
-apt remove --purge nginx nginx-full nginx-core nginx-common libnginx-mod-* -y
+apt remove --purge nginx nginx-core nginx-full nginx-common libnginx-mod-* -y
 apt autoremove -y
-rm -rf /etc/nginx
-rm -rf /var/log/nginx
 apt update
 apt install nginx-full -y
 
