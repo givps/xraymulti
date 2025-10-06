@@ -102,7 +102,7 @@ apt dist-upgrade -y
 apt-get remove --purge ufw firewalld exim4 -y || true
 
 # --- Install essential tools ---
-apt install -y wget curl net-tools ruby python make cmake coreutils \
+apt install -y wget curl net-tools ruby python3 make cmake coreutils \
 rsyslog zip unzip nano sed gnupg gnupg1 bc jq apt-transport-https \
 build-essential dirmngr libxml-parser-perl neofetch git lsof \
 libsqlite3-dev libz-dev gcc g++ libreadline-dev zlib1g-dev \
