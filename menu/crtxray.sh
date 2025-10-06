@@ -54,7 +54,7 @@ fi
 # ------------------------------------------
 # Cloudflare Token
 # ------------------------------------------
-CF_Token="zs5NCxjmO-9lspqfhNfbF60aKCobdfKVQyYKZg65"
+CF_Token="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
 if [[ -z "$CF_Token" ]]; then
     echo -e "${yellow}[INFO]${nc} Enter your Cloudflare API Token (Global or DNS Edit Zone):"
     read -rp "Token: " CF_Token
