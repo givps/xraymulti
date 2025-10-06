@@ -124,7 +124,6 @@ sudo apt install nginx-full -y
 sudo systemctl enable nginx
 sudo systemctl start nginx
 
-
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
 
