@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>givps VPN Server Status | Auto Script VPS</title>
+    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/givps/favicon/refs/heads/main/favicon.ico">
+    <style>
+        /* General Styles */
+        :root {
+            --bg-light: white;
+            --text-light: black;
+            --bg-dark: #121212;
+            --text-dark: #e0e0e0;
+            --link-color: #3b82f6;
+        }
+
+        body {
+            padding: 25px;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            font-family: sans-serif;
+            font-size: 18px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Dark Mode Toggle */
+        .dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .dark-mode a {
+            color: #90caf9;
+        }
+
+        /* Header and Layout */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--link-color);
+            margin-bottom: 10px;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        
+        .dark-mode .info-box {
+            background-color: #1f1f1f;
+        }
+
+        /* Footer and Badges */
+        footer {
+            margin-top: 50px;
+            text-align: center;
+        }
+
+        .social-badges img {
+            margin: 0 5px;
+            vertical-align: middle;
+        }
+
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .dark-mode button {
+            background-color: #0d47a1;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>givps VPN Management</h1>
+        <p>Auto Script VPS for VPN Server Status</p>
+        <nav>
+            <button onclick="darkMode()">Toggle Dark Mode</button>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Server Status Overview</h2>
+        <p>This page confirms that the web server component of the **givps** auto-script is running successfully.</p>
+        
+        <div class="info-box">
+            <h3>Instructions:</h3>
+            <p>To manage user accounts, status, and configuration, please use the **Bash menu script** via SSH:</p>
+            <pre><code>menu</code></pre>
+            <p>Ensure you are logged in as the root user or a user with elevated privileges.</p>
+        </div>
+
+        <section>
+            <h3>Service Information (Placeholder)</h3>
+            <p>This page is currently static. A full implementation would display real-time status details here, such as:</p>
+            <ul>
+                <li><strong>Public IP:</strong> <span id="server-ip">loading...</span></li>
+                <script>
+                fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                document.getElementById('server-ip').textContent = data.ip;
+                })
+                .catch(err => {
+                document.getElementById('server-ip').textContent = 'Error';
+                });
+                </script>
+            </ul>
+        </section>
+
+    </main>
+
+    <footer>
+        <div class="social-badges">
+            <a href="https://github.com/givps" target="_blank">
+                <img src="https://img.shields.io/badge/github-blue?style=flat-square" alt="GitHub Badge">
+            </a>
+            <a href="https://t.me/givps_com" target="_blank">
+                <img src="https://img.shields.io/badge/telegram-blue?style=flat-square" alt="Telegram Badge">
+            </a>
+            <a href="https://givps.com" target="_blank">
+                <img src="https://img.shields.io/badge/givps.com-blue?style=flat-square" alt="Website Badge">
+            </a>
+        </div>
+        <p>&copy; 2024 givps. The MIT License (MIT).</p>
+    </footer>
+
+    <script>
+        /**
+         * Toggles the 'dark-mode' class on the body element.
+         * Saves the state to localStorage to persist the preference.
+         */
+        function darkMode() {
+            var element = document.body;
+            element.classList.toggle("dark-mode");
+            
+            // Save preference
+            if (element.classList.contains("dark-mode")) {
+                localStorage.setItem("theme", "dark");
+            } else {
+                localStorage.setItem("theme", "light");
+            }
+        }
+        
+        /**
+         * Load the saved theme preference on page load.
+         */
+        (function loadTheme() {
+            if (localStorage.getItem("theme") === "dark") {
+                document.body.classList.add("dark-mode");
+            }
+        })();
+    </script>
+</body>
+</html>
