@@ -126,9 +126,6 @@ apt install nginx-full -y
 
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
-apt install -y php8.1 php8.1-cli php8.1-fpm php8.1-mysql php8.1-curl php8.1-gd php8.1-mbstring php8.1-xml php8.1-zip -y
-systemctl enable php8.1-fpm
-systemctl start php8.1-fpm
 
 # Download custom config
 curl -s -k https://${link}/nginx.conf -o /etc/nginx/nginx.conf
