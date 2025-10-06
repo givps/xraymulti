@@ -8,7 +8,8 @@ if [ "${EUID}" -ne 0 ]; then
 		echo "You need to run this script as root"
 		exit 1
 fi
-
+rm -f cf
+rm -f install-tool.sh
 # --- Colors ---
 red='\e[1;31m'
 green='\e[0;32m'
