@@ -14,14 +14,7 @@ echo "XRAY Core Installer"
 echo "Trojan"
 echo "Progress..."
 
-# ===============================
-# Cek domain
-# ===============================
-if [ ! -f /root/domain ]; then
-    echo -e "${red}ERROR${nc}: File /root/domain tidak ditemukan!"
-    exit 1
-fi
-domain=$(cat /root/domain)
+domain=$(cat /etc/xray/domain)
 
 # ===============================
 # Instalasi paket & setting waktu
