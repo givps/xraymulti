@@ -24,7 +24,7 @@ command -v wget >/dev/null 2>&1 || { apt update; apt install -y wget; }
 # ==============================
 DOMAIN="givps.com"
 CF_ZONE_ID="53c3aca6f94d04b0742e82cf6891c02a"
-CF_TOKEN="zs5NCxjmO-9lspqfhNfbF60aKCobdfKVQyYKZg65"
+CF_TOKEN="bBGz3zw-Hn8kRm19IPihy8bK9RIGdbL6ZzhMPfKc"
 IP=$(wget -qO- ipv4.icanhazip.com || curl -s ifconfig.me)
 
 mkdir -p /etc/xray /var/lib/vps
