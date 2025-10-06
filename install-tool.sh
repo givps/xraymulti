@@ -117,6 +117,7 @@ chown vps:vps /home/vps/.profile
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
 apt -y install nginx php php-fpm php-cli php-mysql libxml-parser-perl
+sudo systemctl stop apache2
 
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
