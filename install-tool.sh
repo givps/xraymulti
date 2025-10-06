@@ -116,11 +116,14 @@ chown vps:vps /home/vps/.profile
 
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
-systemctl stop nginx
-apt remove --purge nginx nginx-core nginx-full nginx-common libnginx-mod-* -y
-apt autoremove -y
-apt update
-apt install nginx-full -y
+sudo systemctl stop nginx
+sudo apt remove --purge nginx nginx-core nginx-common libnginx-mod-* -y
+sudo apt autoremove -y
+sudo apt update
+sudo apt install nginx-full -y
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
 
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
@@ -135,8 +138,5 @@ cd /home/vps/public_html
 wget -q -O index.html "https://${link}/index" || echo "Failed to download index.html"
 chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
-
-# --- Restart services ---
-systemctl restart nginx
 
 echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
