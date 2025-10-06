@@ -116,22 +116,26 @@ chown vps:vps /home/vps/.profile
 
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
-apt -y install nginx php php-fpm php-cli php-mysql libxml-parser-perl
-sudo systemctl stop apache2
+sudo systemctl stop nginx
+sudo apt remove --purge nginx nginx-full nginx-core nginx-common libnginx-mod-* -y
+sudo apt autoremove -y
+sudo rm -rf /etc/nginx
+sudo rm -rf /var/log/nginx
+sudo apt update
+sudo apt install nginx-full -y
 
 # Remove default config
 rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
+apt install -y php8.1 php8.1-cli php8.1-fpm php8.1-mysql php8.1-curl php8.1-gd php8.1-mbstring php8.1-xml php8.1-zip -y
+sudo systemctl enable php8.1-fpm
+sudo systemctl start php8.1-fpm
 
 # Download custom config
 curl -s -k https://${link}/nginx.conf -o /etc/nginx/nginx.conf
 curl -s -k https://${link}/vps.conf -o /etc/nginx/conf.d/vps.conf
 
-# Adjust PHP-FPM listen
-sed -i 's/listen = .*/listen = \/run\/php\/php8.1-fpm.sock/' /etc/php/8.1/fpm/pool.d/www.conf
-
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
-echo "<?php phpinfo(); ?>" > /home/vps/public_html/info.php
 cd /home/vps/public_html
 wget -q -O index.html "https://${link}/index" || echo "Failed to download index.html"
 chown -R www-data:www-data /home/vps/public_html
@@ -139,6 +143,5 @@ chmod -R g+rw /home/vps/public_html
 
 # --- Restart services ---
 systemctl restart nginx
-systemctl restart php*-fpm
 
 echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
