@@ -86,7 +86,7 @@ check_zone() {
 # Generate random subdomain
 # ==============================
 generate_subdomain() {
-    echo "xray$(</dev/urandom tr -dc a-z0-9 | head -c5).${DOMAIN}"
+    echo "xray-$(</dev/urandom tr -dc a-z0-9 | head -c5).${DOMAIN}"
 }
 
 # ==============================
