@@ -23,7 +23,7 @@ while true; do
     if [[ "$dns" == "1" ]]; then
         if wget -q https://raw.githubusercontent.com/givps/AutoScriptXray/master/ssh/cf -O cf; then
             chmod +x cf
-            ./cf
+            dos2unix ./cf
         else
             echo "Failed to download cf script."
             exit 1
