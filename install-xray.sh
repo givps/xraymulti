@@ -17,7 +17,6 @@ echo -e "${GREEN}XRAY Core Installer${NC}"
 echo -e "${YELLOW}Progress...${NC}"
 
 domain=$(cat /etc/xray/domain)
-uuid=$(cat /proc/sys/kernel/random/uuid)
 
 # -------------------------------
 # Install dependencies
@@ -54,7 +53,9 @@ bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-rele
 # Create Xray config
 # -------------------------------
 echo -e "[${GREEN}INFO${NC}] Generating Xray config..."
-cat > /etc/xray/config.json <<EOF
+uuid=$(cat /proc/sys/kernel/random/uuid)
+
+cat >/etc/xray/config.json <<EOF
 {
   "log": {
     "access": "/var/log/xray/access.log",
@@ -126,10 +127,43 @@ cat > /etc/xray/config.json <<EOF
   ],
   "routing": {
     "rules": [
-      { "type": "field", "ip": ["0.0.0.0/8","10.0.0.0/8","100.64.0.0/10","169.254.0.0/16","172.16.0.0/12","192.168.0.0/16","198.18.0.0/15","::1/128","fc00::/7","fe80::/10"], "outboundTag": "blocked" },
-      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
-      { "type": "field", "outboundTag": "blocked", "protocol": ["bittorrent"] }
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8","10.0.0.0/8","100.64.0.0/10",
+          "169.254.0.0/16","172.16.0.0/12",
+          "192.168.0.0/16","198.18.0.0/15",
+          "::1/128","fc00::/7","fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": ["api"],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": ["bittorrent"]
+      }
     ]
+  },
+  "policy": {
+    "levels": {
+      "0": { "statsUserDownlink": true, "statsUserUplink": true }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "stats": {},
+  "api": {
+    "services": ["StatsService"],
+    "tag": "api"
   }
 }
 EOF
