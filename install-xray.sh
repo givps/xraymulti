@@ -277,7 +277,7 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-cat > /etc/nginx/conf.d/xray.conf <<EOF
+cat > /etc/nginx/conf.d/xray.conf << 'EOF'
 # ==============================
 # WebSocket Server (HTTPs)
 # ==============================
@@ -285,7 +285,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name $domain *.$domain;
-    return 301 https://\$host\$request_uri;
+    return 301 https://$host$request_uri;
 }
 
 server {
