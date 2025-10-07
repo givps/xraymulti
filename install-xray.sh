@@ -10,6 +10,10 @@ yellow='\e[1;33m'
 blue='\e[1;34m'
 nc='\e[0m'
 
+#delete old
+rm -f /etc/xray/xray.crt
+rm -f /etc/xray/xray.key
+
 # ------------------------------------------
 # Log setup
 # ------------------------------------------
