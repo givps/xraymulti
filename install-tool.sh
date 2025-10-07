@@ -128,6 +128,7 @@ echo -e "${green}[INFO] Installing NGINX mainline...${nc}"
 sudo apt install -y nginx
 
 # Enable and restart NGINX
+sudo systemctl daemon-reload
 sudo systemctl enable nginx
 sudo systemctl restart nginx
 
