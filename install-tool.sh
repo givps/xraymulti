@@ -3,7 +3,6 @@
 # VPS Initial Setup Script
 # ==========================================
 set -euo pipefail
-IFS=$'\n\t'
 
 # --- Check root ---
 if [ "$EUID" -ne 0 ]; then
