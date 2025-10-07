@@ -20,7 +20,6 @@ domain=$(cat /etc/xray/domain)
 # Instalasi paket & setting waktu
 # ===============================
 echo -e "[ ${green}INFO${nc} ] Installing dependencies..."
-echo -e "[ ${green}INFO${nc} ] Installing dependencies..."
 apt update -y && apt install -y \
   curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
   cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables \
