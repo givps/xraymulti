@@ -92,16 +92,6 @@ apt update -y && apt install -y \
 echo "" >> .profile
 echo "menu" >> .profile
 
-# --- Install web server ---
-echo -e "${green}[INFO] Installing Nginx...${nc}"
-# install webserver
-apt -y install nginx
-cd
-wget -O /etc/nginx/nginx.conf "https://${link}/nginx.conf"
-mkdir -p /home/vps/public_html
-wget -O /etc/nginx/conf.d/vps.conf "https://${link}/vps.conf"
-/etc/init.d/nginx restart
-
 # remove unnecessary files
 cd
 apt autoclean -y
@@ -111,6 +101,16 @@ apt-get -y --purge remove apache2*;
 apt-get -y --purge remove bind9*;
 apt-get -y remove sendmail*
 apt autoremove -y
+
+# --- Install web server ---
+apt -y install nginx
+cd
+rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
+wget -O /etc/nginx/nginx.conf "https://${Server_URL}/nginx.conf"
+mkdir -p /home/vps/public_html
+wget -O /etc/nginx/conf.d/vps.conf "https://${Server_URL}/vps.conf"
+/etc/init.d/nginx restart
 
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
