@@ -94,8 +94,10 @@ echo "menu" >> .profile
 
 # Remove old NGINX
 echo -e "${green}[INFO] Removing old NGINX...${nc}"
-sudo apt remove -y nginx nginx-common
-sudo apt update -y
+apt remove -y nginx nginx-common
+apt purge -y nginx nginx-common
+apt autoremove -y
+apt update -y
 
 # install webserver
 apt -y install nginx
