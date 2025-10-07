@@ -102,8 +102,8 @@ apt update -y
 # install webserver
 apt -y install nginx
 cd
-rm /etc/nginx/sites-enabled/default
-rm /etc/nginx/sites-available/default
+rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-available/default
 wget -O /etc/nginx/nginx.conf "https://${Server_URL}/nginx.conf"
 mkdir -p /home/vps/public_html
 wget -O /etc/nginx/conf.d/vps.conf "https://${Server_URL}/vps.conf"
