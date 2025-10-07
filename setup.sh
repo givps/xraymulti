@@ -96,8 +96,8 @@ echo "   - IPv6                    : [OFF]"  | tee -a log-install.txt
 echo "   - Autoreboot On 05.00 GMT +7" | tee -a log-install.txt
 echo "   - Auto Delete Expired Account" | tee -a log-install.txt
 echo "   - Installation Log --> /root/log-install.txt"  | tee -a log-install.txt
-echo " Reboot 15 Sec"
-sleep 15
+echo " Reboot 10 Sec"
+sleep 10
 rm -rf install-menu.sh
 rm -rf install-xray.sh
 rm -rf install-tool.sh
