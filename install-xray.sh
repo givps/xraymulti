@@ -371,27 +371,26 @@ EOF
 echo -e "[${green}INFO${nc}] Configuring Nginx..."
 
 cat > /etc/nginx/conf.d/xray.conf <<EOF
-# /etc/nginx/conf.d/xray.conf
 server {
     listen 80;
     listen [::]:80;
-    server_name $domain *.$domain;
-    return 301 https://$host$request_uri;
+    server_name 127.0.0.1 localhost;
+
+    # Redirect HTTP ke HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
     listen 443 ssl http2;
-    listen [::]:443 ssl;
-    http2 on;
-    server_name $domain *.$domain;
+    listen [::]:443 ssl http2;
+    server_name 127.0.0.1 localhost;
 
     ssl_certificate /etc/xray/xray.crt;
-    ssl_certificate_key /etc/xray/xray.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:..."; # sesuaikan
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1h;
+    ssl_certificate_key /etc/xray/xray.key
+    ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
     # -------------------------
     # VLESS WS
@@ -403,7 +402,6 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
     }
 
     # -------------------------
@@ -411,12 +409,11 @@ server {
     # -------------------------
     location /vmess {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:30310;
+        proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
     }
 
     # -------------------------
@@ -424,12 +421,11 @@ server {
     # -------------------------
     location /trojan {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:30300;
+        proxy_pass http://127.0.0.1:30310;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
     }
 
     # -------------------------
@@ -437,55 +433,51 @@ server {
     # -------------------------
     location /ssws {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:10085; # sama dengan VLESS WS
+        proxy_pass http://127.0.0.1:10085;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
     }
 
     # -------------------------
-    # VLESS gRPC
+    # gRPC Endpoints
     # -------------------------
     location /vless-grpc {
-        grpc_pass grpc://127.0.0.1:30300;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header Host $host;
-    }
-
-    # -------------------------
-    # VMess gRPC
-    # -------------------------
-    location /vmess-grpc {
-        grpc_pass grpc://127.0.0.1:30310;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header Host $host;
-    }
-
-    # -------------------------
-    # Trojan gRPC
-    # -------------------------
-    location /trojan-grpc {
         grpc_pass grpc://127.0.0.1:10085;
         grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 
-    # -------------------------
-    # Shadowsocks gRPC
-    # -------------------------
-    location /ss-grpc {
+    location /vmess-grpc {
+        grpc_pass grpc://127.0.0.1:30300;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
+    }
+
+    location /trojan-grpc {
         grpc_pass grpc://127.0.0.1:30310;
         grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 
-    # Optional: Default location
-    location / {
-        root /var/www/html;
-        index index.html;
+    location /ss-grpc {
+        grpc_pass grpc://127.0.0.1:10085;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
     }
+
+    # -------------------------
+    # Optional: security headers
+    # -------------------------
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header X-XSS-Protection "1; mode=block";
 }
 EOF
 
