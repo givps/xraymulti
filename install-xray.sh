@@ -1,60 +1,59 @@
 #!/bin/bash
-# ===============================
-# XRAY Core Installer (Vmess/Vless/Trojan/Shadowsocks)
-# ===============================
+# ===============================================
+# XRAY Core Installer (Vless/Vmess/Trojan WS/SS)
+# Supports Debian & Ubuntu
+# ===============================================
 set -euo pipefail
 
-# color
-red='\e[1;31m'
-green='\e[0;32m'
-yellow='\e[1;33m'
-nc='\e[0m'
+# -------------------------------
+# Colors
+# -------------------------------
+RED='\e[1;31m'
+GREEN='\e[0;32m'
+YELLOW='\e[1;33m'
+NC='\e[0m'
 
-echo "XRAY Core Installer"
-echo "Trojan"
-echo "Progress..."
+echo -e "${GREEN}XRAY Core Installer${NC}"
+echo -e "${YELLOW}Progress...${NC}"
 
 domain=$(cat /etc/xray/domain)
+uuid=$(cat /proc/sys/kernel/random/uuid)
 
-# ===============================
-# Instalasi paket & setting waktu
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Installing dependencies..."
-apt update -y && apt install -y \
-  curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
-  cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables \
-  iptables-persistent jq
+# -------------------------------
+# Install dependencies
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Installing dependencies..."
+apt update -y
+apt install -y curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
+cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables iptables-persistent jq nginx
 
-# ===============================
-# Setting timezone & syncing time
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Setting timezone & syncing time..."
+# -------------------------------
+# Timezone & sync
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Setting timezone & syncing time..."
 timedatectl set-timezone Asia/Jakarta
 timedatectl set-ntp true
 systemctl enable chrony --now
 chronyc -a makestep
 
-# ===============================
-# Setup folder Xray & logs
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Preparing Xray directories..."
+# -------------------------------
+# Prepare directories
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Preparing directories..."
 install -d -m 755 -o www-data -g www-data /run/xray /var/log/xray /etc/xray
 touch /var/log/xray/{access.log,error.log,access2.log,error2.log}
 chmod 644 /var/log/xray/*.log
 
-# ===============================
-# Install Xray Core
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Downloading & installing Xray core..."
+# -------------------------------
+# Install Xray
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Installing Xray core..."
 bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 1.5.6
 
-# ===============================
-# Generate clean Xray config
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Generating Xray config..."
-
-uuid=$(cat /proc/sys/kernel/random/uuid)
-
+# -------------------------------
+# Create Xray config
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Generating Xray config..."
 cat > /etc/xray/config.json <<EOF
 {
   "log": {
@@ -63,82 +62,28 @@ cat > /etc/xray/config.json <<EOF
     "loglevel": "warning"
   },
   "inbounds": [
-    {
-      "listen": "127.0.0.1",
-      "port": 10085,
-      "protocol": "dokodemo-door",
-      "settings": { "address": "127.0.0.1" },
-      "tag": "api"
-    },
-    {
-      "listen": "/run/xray/vless_ws.sock",
-      "protocol": "vless",
-      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
-    },
-    {
-      "listen": "/run/xray/vmess_ws.sock",
-      "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
-    },
-    {
-      "listen": "/run/xray/trojan_ws.sock",
-      "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$uuid" }] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 30300,
-      "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
-    },
-    {
-      "listen": "/run/xray/vless_grpc.sock",
-      "protocol": "vless",
-      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
-    },
-    {
-      "listen": "/run/xray/vmess_grpc.sock",
-      "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
-    },
-    {
-      "listen": "/run/xray/trojan_grpc.sock",
-      "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$uuid" }] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 30310,
-      "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } }
-    }
+    {"listen":"127.0.0.1","port":10085,"protocol":"dokodemo-door","settings":{"address":"127.0.0.1"},"tag":"api"},
+    {"listen":"/run/xray/vless_ws.sock","protocol":"vless","settings":{"decryption":"none","clients":[{"id":"$uuid"}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vless"}}},
+    {"listen":"/run/xray/vmess_ws.sock","protocol":"vmess","settings":{"clients":[{"id":"$uuid","alterId":0}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vmess"}}},
+    {"listen":"/run/xray/trojan_ws.sock","protocol":"trojan","settings":{"clients":[{"password":"$uuid"}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/trojan"}}},
+    {"listen":"127.0.0.1","port":30300,"protocol":"shadowsocks","settings":{"clients":[{"method":"aes-128-gcm","password":"$uuid"}],"network":"tcp,udp"},"streamSettings":{"network":"ws","wsSettings":{"path":"/ssws"}}},
+    {"listen":"/run/xray/vless_grpc.sock","protocol":"vless","settings":{"decryption":"none","clients":[{"id":"$uuid"}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"vless-grpc"}}},
+    {"listen":"/run/xray/vmess_grpc.sock","protocol":"vmess","settings":{"clients":[{"id":"$uuid","alterId":0}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"vmess-grpc"}}},
+    {"listen":"/run/xray/trojan_grpc.sock","protocol":"trojan","settings":{"clients":[{"password":"$uuid"}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"trojan-grpc"}}},
+    {"listen":"127.0.0.1","port":30310,"protocol":"shadowsocks","settings":{"clients":[{"method":"aes-128-gcm","password":"$uuid"}],"network":"tcp,udp"},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"ss-grpc"}}}
   ],
-  "outbounds": [
-    { "protocol": "freedom" },
-    { "protocol": "blackhole", "tag": "blocked" }
-  ]
+  "outbounds":[{"protocol":"freedom"},{"protocol":"blackhole","tag":"blocked"}]
 }
 EOF
 
-echo -e "[INFO] Removing old override directory..."
-rm -rf /etc/systemd/system/xray.service.d
+# -------------------------------
+# Create systemd services
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Creating systemd services..."
 
-# ===============================
-# Xray main service
-# ===============================
-echo -e "[INFO] Creating /etc/systemd/system/xray.service..."
 cat > /etc/systemd/system/xray.service << 'EOF'
 [Unit]
 Description=Xray Service
-Documentation=https://github.com/XTLS/Xray-core
 After=network.target nss-lookup.target
 
 [Service]
@@ -151,7 +96,6 @@ ProtectHome=true
 PrivateTmp=true
 ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
 Restart=on-failure
-RestartPreventExitStatus=23
 RestartSec=5
 LimitNPROC=10000
 LimitNOFILE=1000000
@@ -160,11 +104,7 @@ LimitNOFILE=1000000
 WantedBy=multi-user.target
 EOF
 
-# ===============================
-# Runn service for preparing /var/run/xray
-# ===============================
-echo -e "[INFO] Creating /etc/systemd/system/runn.service..."
-cat > /etc/systemd/system/runn.service << EOF
+cat > /etc/systemd/system/runn.service << 'EOF'
 [Unit]
 Description=Prepare Xray runtime directory
 After=network.target
@@ -179,14 +119,17 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
-#nginx config
-cat >/etc/nginx/conf.d/xray.conf <<EOF
-# Redirect HTTP to HTTPS
+
+# -------------------------------
+# Create Nginx config with wildcard SSL
+# -------------------------------
+echo -e "[${GREEN}INFO${NC}] Configuring Nginx..."
+cat > /etc/nginx/conf.d/xray.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
     server_name $domain *.$domain;
-    return 301 https://$host$request_uri;
+    return 301 https://\$host\$request_uri;
 }
 
 server {
@@ -203,145 +146,89 @@ server {
     ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
     ssl_prefer_server_ciphers on;
 
-    # -------------------
-    # WebSocket paths
-    # -------------------
     location = /vless {
-        proxy_redirect off;
         proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
     location = /vmess {
-        proxy_redirect off;
         proxy_pass http://unix:/run/xray/vmess_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
     location = /trojan {
-        proxy_redirect off;
         proxy_pass http://unix:/run/xray/trojan_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
     location = /ssws {
-        proxy_redirect off;
         proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
-    # -------------------
-    # gRPC paths
-    # -------------------
     location ^~ /vless-grpc {
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $http_host;
+        grpc_set_header X-Real-IP \$remote_addr;
+        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        grpc_set_header Host \$http_host;
         grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
     }
 
     location ^~ /vmess-grpc {
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $http_host;
+        grpc_set_header X-Real-IP \$remote_addr;
+        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        grpc_set_header Host \$http_host;
         grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
     }
 
     location ^~ /trojan-grpc {
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $http_host;
+        grpc_set_header X-Real-IP \$remote_addr;
+        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        grpc_set_header Host \$http_host;
         grpc_pass grpc://unix:/run/xray/trojan_grpc.sock;
     }
 
     location ^~ /ss-grpc {
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $http_host;
+        grpc_set_header X-Real-IP \$remote_addr;
+        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        grpc_set_header Host \$http_host;
         grpc_pass grpc://127.0.0.1:30310;
     }
 }
 EOF
 
-# ===============================
-# Restart & Enable Services
-# ===============================
-
-echo -e "${yellow}[SERVICE]${nc} Reloading systemd daemon..."
+# -------------------------------
+# Enable & start services
+# -------------------------------
+echo -e "[${YELLOW}SERVICE${NC}] Reloading systemd daemon..."
 systemctl daemon-reload
-
-# Pastikan direktori runtime dibuat lebih dulu
-echo -e "[ ${green}INFO${nc} ] Enabling and starting runn.service..."
-systemctl enable runn.service >/dev/null 2>&1
+systemctl enable runn.service
 systemctl restart runn.service
-
-# enable xray vmess ws tls
-echo -e "[ ${green}OK${NC} ] Restarting Vmess WS"
 systemctl enable xray.service
-systemctl start xray.service
 systemctl restart xray.service
 
-# enable xray vless ws tls
-echo -e "[ ${green}OK${NC} ] Restarting Vless WS"
-systemctl daemon-reload
-systemctl enable xray@vless.service
-systemctl start xray@vless.service
-systemctl restart xray@vless.service
-
-# enable xray trojan ws tls
-echo -e "[ ${green}OK${NC} ] Restarting Trojan WS"
-systemctl daemon-reload
-systemctl enable xray@trojanws.service
-systemctl start xray@trojanws.service
-systemctl restart xray@trojanws.service
-
-# Jalankan Xray setelah runn siap
-echo -e "[ ${green}INFO${nc} ] Enabling and starting Xray..."
-systemctl enable xray.service >/dev/null 2>&1
-systemctl restart xray.service
-
-# Reload dan restart nginx terakhir
-echo -e "[ ${green}INFO${nc} ] Reloading and restarting Nginx..."
-systemctl daemon-reload
+echo -e "[${GREEN}INFO${NC}] Enabling and restarting Nginx..."
+nginx -t
 systemctl enable nginx
-systemctl start nginx
 systemctl restart nginx
 
-# ===============================
-# Info services
-# ===============================
-yellow() { echo -e "${yellow}${*}${nc}"; }
-
-yellow "✅ Xray (Vmess) service is running"
-yellow "✅ Xray (Vless) service is running"
-yellow "✅ Xray (Trojan) service is running"
-yellow "✅ Xray (Shadowsocks) service is running"
-yellow "✅ Nginx reverse proxy active"
-yellow "✅ Wildcard SSL loaded successfully"
-
-# ===============================
-# Clean installer
-# ===============================
-rm -f install-xray.sh
-echo -e "${green}INFO${nc}: Installation script removed successfully."
-
+echo -e "${YELLOW}✅ Xray (Vless, Vmess, Trojan WS, SS) & Nginx wildcard SSL are running${NC}"
