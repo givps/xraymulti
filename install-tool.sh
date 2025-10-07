@@ -103,13 +103,6 @@ apt-get -y remove sendmail*
 apt autoremove -y
 
 echo -e "${green}[INFO] Starting NGINX mainline installation...${nc}"
-
-# Backup old NGINX configuration
-if [ -d /etc/nginx ]; then
-    echo -e "${yellow}[INFO] Backing up old NGINX configuration...${nc}"
-    sudo cp -r /etc/nginx /etc/nginx.bak_$(date +%s)
-fi
-
 # Remove old NGINX
 echo -e "${green}[INFO] Removing old NGINX...${nc}"
 sudo apt remove -y nginx nginx-common
@@ -133,13 +126,6 @@ sudo apt update -y
 # Install NGINX mainline
 echo -e "${green}[INFO] Installing NGINX mainline...${nc}"
 sudo apt install -y nginx
-
-# Check if stream module is enabled
-if nginx -V 2>&1 | grep -q stream; then
-    echo -e "${green}[OK] NGINX with stream module is installed.${nc}"
-else
-    echo -e "${red}[ERROR] Stream module not found!${nc}"
-fi
 
 # Enable and restart NGINX
 sudo systemctl enable nginx
