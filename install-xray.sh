@@ -380,27 +380,6 @@ server {
         grpc_pass grpc://127.0.0.1:30310;
     }
 }
-
-# ==============================
-# Stream Server (Trojan TCP/XTLS)
-# ==============================
-stream {
-    upstream trojan_tcp {
-        server 127.0.0.1:2083;
-    }
-
-    server {
-        listen 2083 reuseport;
-        proxy_pass trojan_tcp;
-        proxy_protocol on;
-        tcp_nopush on;
-        tcp_nodelay on;
-        proxy_timeout 3600s;
-        proxy_connect_timeout 10s;
-        access_log /var/log/nginx/trojan-tcp-access.log;
-        error_log /var/log/nginx/trojan-tcp-error.log;
-    }
-}
 EOF
 
 # ===============================
