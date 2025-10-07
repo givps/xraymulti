@@ -156,6 +156,16 @@ wget -q -O index.html "https://${link}/index" || echo "Failed to download index.
 chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
 
+# install resolvconf service
+apt install resolvconf -y
+
+#start resolvconf service
+systemctl start resolvconf.service
+systemctl enable resolvconf.service
+
+echo -e "[ ${green}ok${NC} ] Restarting resolvconf"
+/etc/init.d/resolvconf restart >/dev/null 2>&1
+
 echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
 
 
