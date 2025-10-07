@@ -383,8 +383,9 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name 127.0.0.1 localhost;
 
     ssl_certificate /etc/xray/xray.crt;
