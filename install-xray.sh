@@ -277,7 +277,7 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-cat >/etc/nginx/conf.d/xray.conf <<EOF
+cat > /etc/nginx/conf.d/xray.conf <<EOF
 # ==============================
 # WebSocket Server (HTTPs)
 # ==============================
