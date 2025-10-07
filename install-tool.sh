@@ -64,13 +64,6 @@ if command -v badvpn-udpgw &>/dev/null; then
     screen -dmS badvpn7300 badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 100
 fi
 
-# --- Enable and restart services if installed ---
-systemctl enable xray 2>/dev/null || true
-systemctl restart xray 2>/dev/null || true
-systemctl restart nginx 2>/dev/null || true
-systemctl enable runn 2>/dev/null || true
-systemctl restart runn 2>/dev/null || true
-
 # --- Setup iptables rules ---
 iptables -I INPUT -p udp --dport 5300 -j ACCEPT
 iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 5300
