@@ -104,8 +104,6 @@ vmess_ws=$(jq -n --arg id "$uuid" --arg add "$domain" --arg port "$TLS_PORT" --a
 vmess_grpc=$(jq -n --arg id "$uuid" --arg add "$domain" --arg port "$GRPC_PORT" --arg net "grpc" --arg type "none" --arg serviceName "vmess-grpc" \
   '{v:"2",ps:$user,add:$add,port:$port|tonumber,id:$id,aid:"0",net:$net,type:$type,host:"",path:"",serviceName:$serviceName}' | base64 -w0)
 
-trojan_tcp_tls="trojan://${uuid}@${domain}:${TCP_PORT}?security=tls&sni=${BUG}#${user}"
-trojan_tcp_plain="trojan://${uuid}@${domain}:${TCP_PORT}#${user}"
 trojan_ws="trojan://${uuid}@${domain}:${TLS_PORT}?path=/trojan&security=tls&host=${BUG}&type=ws&sni=${BUG}#${user}"
 trojan_grpc="trojan://${uuid}@${domain}:${GRPC_PORT}?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=${BUG}#${user}"
 
@@ -169,8 +167,6 @@ echo "VLESS WS: $vless_ws"
 echo "VLESS gRPC: $vless_grpc"
 echo "VMess WS: $vmess_ws"
 echo "VMess gRPC: $vmess_grpc"
-echo "Trojan TCP TLS: $trojan_tcp_tls"
-echo "Trojan TCP plain: $trojan_tcp_plain"
 echo "Trojan WS: $trojan_ws"
 echo "Trojan gRPC: $trojan_grpc"
 echo "Shadowsocks WS: $ss_ws"
