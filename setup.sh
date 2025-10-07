@@ -85,7 +85,6 @@ echo "   - TROJAN GRPC          : 443"  | tee -a log-install.txt
 echo "   - SHADOWSOCKS GRPC     : 443"  | tee -a log-install.txt
 echo "   - VMESS GRPC           : 443"  | tee -a log-install.txt
 echo "   - VLESS GRPC           : 443"  | tee -a log-install.txt
-echo "   - TROJAN TCP           : 2083"  | tee -a log-install.txt
 echo -e "${red}=========================================${nc}"  | tee -a log-install.txt
 echo "   >>> Server Information & Other Features"  | tee -a log-install.txt
 echo "   - Timezone                : Asia/Jakarta (GMT +7)"  | tee -a log-install.txt
