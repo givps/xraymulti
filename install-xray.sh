@@ -225,65 +225,66 @@ cat >/etc/xray/config.json <<EOF
     },
     {
       "listen": "127.0.0.1",
-      "port": 30000,
+      "port": 30001,
       "protocol": "vless",
-      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "settings": { "clients": [{ "id": "$UUID" }], "decryption": "none" },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30001,
+      "port": 30002,
       "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "settings": { "clients": [{ "id": "$UUID", "alterId": 0 }] },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30002,
+      "port": 30003,
       "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$uuid" }] },
+      "settings": { "clients": [{ "password": "$UUID" }] },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30300,
+      "port": 30004,
       "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$UUID" }], "network": "tcp,udp" },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30010,
+      "port": 30011,
       "protocol": "vless",
-      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "settings": { "clients": [{ "id": "$UUID" }], "decryption": "none" },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30011,
+      "port": 30012,
       "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "settings": { "clients": [{ "id": "$UUID", "alterId": 0 }] },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30012,
+      "port": 30013,
       "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$uuid" }] },
+      "settings": { "clients": [{ "password": "$UUID" }] },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
     },
     {
       "listen": "127.0.0.1",
-      "port": 30310,
+      "port": 30014,
       "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$UUID" }], "network": "tcp,udp" },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } }
     }
   ],
   "outbounds": [
     { "protocol": "freedom" },
     { "protocol": "blackhole", "tag": "blocked" }
-  ]
+  ],
+  "routing": { "rules": [] }
 }
 EOF
 
@@ -340,111 +341,53 @@ cat > /etc/nginx/conf.d/xray.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
-    server_name 127.0.0.1 localhost;
+    server_name $domain *.$domain;
 
-    # Redirect HTTP ke HTTPS
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-    server_name 127.0.0.1 localhost;
-
-    ssl_certificate /etc/xray/xray.crt;
-    ssl_certificate_key /etc/xray/xray.key
-    ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
-
-    # -------------------------
-    # VLESS WS
-    # -------------------------
     location /vless {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10085;
+        proxy_pass http://127.0.0.1:30001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
-    # -------------------------
-    # VMess WS
-    # -------------------------
     location /vmess {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:30300;
+        proxy_pass http://127.0.0.1:30002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
-    # -------------------------
-    # Trojan WS
-    # -------------------------
     location /trojan {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:30310;
+        proxy_pass http://127.0.0.1:30003;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
-    # -------------------------
-    # Shadowsocks WS
-    # -------------------------
     location /ssws {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10085;
+        proxy_pass http://127.0.0.1:30004;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
-    # -------------------------
-    # gRPC Endpoints
-    # -------------------------
+    # gRPC
     location /vless-grpc {
-        grpc_pass grpc://127.0.0.1:10085;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $host;
+        grpc_pass grpc://127.0.0.1:30011;
     }
-
     location /vmess-grpc {
-        grpc_pass grpc://127.0.0.1:30300;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $host;
+        grpc_pass grpc://127.0.0.1:30012;
     }
-
     location /trojan-grpc {
-        grpc_pass grpc://127.0.0.1:30310;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $host;
+        grpc_pass grpc://127.0.0.1:30013;
     }
-
     location /ss-grpc {
-        grpc_pass grpc://127.0.0.1:10085;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        grpc_set_header Host $host;
+        grpc_pass grpc://127.0.0.1:30014;
     }
-
-    # -------------------------
-    # Optional: security headers
-    # -------------------------
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options DENY;
-    add_header X-XSS-Protection "1; mode=block";
 }
 EOF
 
