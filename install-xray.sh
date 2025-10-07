@@ -283,7 +283,9 @@ WantedBy=multi-user.target
 EOF
 
 cat >/etc/nginx/conf.d/xray.conf <<EOF
-# Redirect HTTP → HTTPS
+# ==============================
+# WebSocket Server (HTTPs)
+# ==============================
 server {
     listen 80;
     listen [::]:80;
@@ -291,11 +293,10 @@ server {
     return 301 https://$host$request_uri;
 }
 
-# HTTPS server with wildcard
 server {
     listen 443 ssl http2 reuseport;
     listen [::]:443 ssl http2 reuseport;
-    server_name *.$domain;
+    server_name _;
 
     root /home/vps/public_html;
     index index.html index.htm;
@@ -306,56 +307,56 @@ server {
     ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
     ssl_prefer_server_ciphers on;
 
-    # -----------------------
-    # WebSocket Locations
-    # -----------------------
+    # -------------------
+    # WebSocket locations
+    # -------------------
     location = /vless {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location = /vmess {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vmess_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location = /trojan {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/trojan_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location = /ssws {
         proxy_redirect off;
         proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # -----------------------
-    # gRPC Locations
-    # -----------------------
+    # -------------------
+    # gRPC locations
+    # -------------------
     location ^~ /vless-grpc {
         grpc_set_header X-Real-IP $remote_addr;
         grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -382,6 +383,27 @@ server {
         grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $http_host;
         grpc_pass grpc://127.0.0.1:30310;
+    }
+}
+
+# ==============================
+# Stream Server (Trojan TCP/XTLS)
+# ==============================
+stream {
+    upstream trojan_tcp {
+        server 127.0.0.1:2083;
+    }
+
+    server {
+        listen 2083 reuseport;
+        proxy_pass trojan_tcp;
+        proxy_protocol on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        proxy_timeout 3600s;
+        proxy_connect_timeout 10s;
+        access_log /var/log/nginx/trojan-tcp-access.log;
+        error_log /var/log/nginx/trojan-tcp-error.log;
     }
 }
 EOF
