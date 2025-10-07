@@ -97,8 +97,6 @@ echo -e "${green}[INFO] Installing Nginx...${nc}"
 # install webserver
 apt -y install nginx
 cd
-rm /etc/nginx/sites-enabled/default
-rm /etc/nginx/sites-available/default
 wget -O /etc/nginx/nginx.conf "https://${link}/nginx.conf"
 mkdir -p /home/vps/public_html
 wget -O /etc/nginx/conf.d/vps.conf "https://${link}/vps.conf"
