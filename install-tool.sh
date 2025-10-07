@@ -102,15 +102,48 @@ apt-get -y --purge remove bind9*;
 apt-get -y remove sendmail*
 apt autoremove -y
 
-# --- Install web server ---
-apt -y install nginx
-cd
-rm /etc/nginx/sites-enabled/default
-rm /etc/nginx/sites-available/default
-wget -O /etc/nginx/nginx.conf "https://${Server_URL}/nginx.conf"
-mkdir -p /home/vps/public_html
-wget -O /etc/nginx/conf.d/vps.conf "https://${Server_URL}/vps.conf"
-/etc/init.d/nginx restart
+echo -e "${green}[INFO] Starting NGINX mainline installation...${nc}"
+
+# Backup old NGINX configuration
+if [ -d /etc/nginx ]; then
+    echo -e "${yellow}[INFO] Backing up old NGINX configuration...${nc}"
+    sudo cp -r /etc/nginx /etc/nginx.bak_$(date +%s)
+fi
+
+# Remove old NGINX
+echo -e "${green}[INFO] Removing old NGINX...${nc}"
+sudo apt remove -y nginx nginx-common
+sudo apt update -y
+
+# Install dependencies
+echo -e "${green}[INFO] Installing dependencies...${nc}"
+sudo apt install -y curl gnupg2 ca-certificates lsb-release
+
+# Detect distro (debian / ubuntu)
+DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
+CODENAME=$(lsb_release -cs)
+
+# Add NGINX mainline repository
+echo -e "${green}[INFO] Adding NGINX mainline repository for $DISTRO ${CODENAME}...${nc}"
+echo "deb http://nginx.org/packages/mainline/$DISTRO/ $CODENAME nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
+curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+
+sudo apt update -y
+
+# Install NGINX mainline
+echo -e "${green}[INFO] Installing NGINX mainline...${nc}"
+sudo apt install -y nginx
+
+# Check if stream module is enabled
+if nginx -V 2>&1 | grep -q stream; then
+    echo -e "${green}[OK] NGINX with stream module is installed.${nc}"
+else
+    echo -e "${red}[ERROR] Stream module not found!${nc}"
+fi
+
+# Enable and restart NGINX
+sudo systemctl enable nginx
+sudo systemctl restart nginx
 
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
