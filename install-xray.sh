@@ -62,17 +62,75 @@ cat > /etc/xray/config.json <<EOF
     "loglevel": "warning"
   },
   "inbounds": [
-    {"listen":"127.0.0.1","port":10085,"protocol":"dokodemo-door","settings":{"address":"127.0.0.1"},"tag":"api"},
-    {"listen":"/run/xray/vless_ws.sock","protocol":"vless","settings":{"decryption":"none","clients":[{"id":"$uuid"}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vless"}}},
-    {"listen":"/run/xray/vmess_ws.sock","protocol":"vmess","settings":{"clients":[{"id":"$uuid","alterId":0}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vmess"}}},
-    {"listen":"/run/xray/trojan_ws.sock","protocol":"trojan","settings":{"clients":[{"password":"$uuid"}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/trojan"}}},
-    {"listen":"127.0.0.1","port":30300,"protocol":"shadowsocks","settings":{"clients":[{"method":"aes-128-gcm","password":"$uuid"}],"network":"tcp,udp"},"streamSettings":{"network":"ws","wsSettings":{"path":"/ssws"}}},
-    {"listen":"/run/xray/vless_grpc.sock","protocol":"vless","settings":{"decryption":"none","clients":[{"id":"$uuid"}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"vless-grpc"}}},
-    {"listen":"/run/xray/vmess_grpc.sock","protocol":"vmess","settings":{"clients":[{"id":"$uuid","alterId":0}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"vmess-grpc"}}},
-    {"listen":"/run/xray/trojan_grpc.sock","protocol":"trojan","settings":{"clients":[{"password":"$uuid"}]},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"trojan-grpc"}}},
-    {"listen":"127.0.0.1","port":30310,"protocol":"shadowsocks","settings":{"clients":[{"method":"aes-128-gcm","password":"$uuid"}],"network":"tcp,udp"},"streamSettings":{"network":"grpc","grpcSettings":{"serviceName":"ss-grpc"}}}
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": { "address": "127.0.0.1" },
+      "tag": "api"
+    },
+    {
+      "listen": "/run/xray/vless_ws.sock",
+      "protocol": "vless",
+      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
+    },
+    {
+      "listen": "/run/xray/vmess_ws.sock",
+      "protocol": "vmess",
+      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
+    },
+    {
+      "listen": "/run/xray/trojan_ws.sock",
+      "protocol": "trojan",
+      "settings": { "clients": [{ "password": "$uuid" }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 30300,
+      "protocol": "shadowsocks",
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
+    },
+    {
+      "listen": "/run/xray/vless_grpc.sock",
+      "protocol": "vless",
+      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
+    },
+    {
+      "listen": "/run/xray/vmess_grpc.sock",
+      "protocol": "vmess",
+      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
+    },
+    {
+      "listen": "/run/xray/trojan_grpc.sock",
+      "protocol": "trojan",
+      "settings": { "clients": [{ "password": "$uuid" }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 30310,
+      "protocol": "shadowsocks",
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } }
+    }
   ],
-  "outbounds":[{"protocol":"freedom"},{"protocol":"blackhole","tag":"blocked"}]
+  "outbounds": [
+    { "protocol": "freedom" },
+    { "protocol": "blackhole", "tag": "blocked" }
+  ],
+  "routing": {
+    "rules": [
+      { "type": "field", "ip": ["0.0.0.0/8","10.0.0.0/8","100.64.0.0/10","169.254.0.0/16","172.16.0.0/12","192.168.0.0/16","198.18.0.0/15","::1/128","fc00::/7","fe80::/10"], "outboundTag": "blocked" },
+      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
+      { "type": "field", "outboundTag": "blocked", "protocol": ["bittorrent"] }
+    ]
+  }
 }
 EOF
 
@@ -124,14 +182,63 @@ EOF
 # Create Nginx config with wildcard SSL
 # -------------------------------
 echo -e "[${GREEN}INFO${NC}] Configuring Nginx..."
-cat > /etc/nginx/conf.d/xray.conf <<EOF
+cat >/etc/nginx/conf.d/xray.conf <<EOF
+# -----------------------------
+# HTTP (Non-TLS)
+# -----------------------------
 server {
     listen 80;
     listen [::]:80;
     server_name $domain *.$domain;
-    return 301 https://\$host\$request_uri;
+
+    root /home/vps/public_html;
+    index index.html index.htm;
+
+    # WebSocket (non-TLS)
+    location = /vless {
+        proxy_pass http://unix:/run/xray/vless_ws.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+
+    location = /vmess {
+        proxy_pass http://unix:/run/xray/vmess_ws.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+
+    location = /trojan {
+        proxy_pass http://unix:/run/xray/trojan_ws.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+
+    location = /ssws {
+        proxy_pass http://127.0.0.1:30300;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
 }
 
+# -----------------------------
+# HTTPS (TLS)
+# -----------------------------
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -146,6 +253,7 @@ server {
     ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
     ssl_prefer_server_ciphers on;
 
+    # WebSocket (TLS)
     location = /vless {
         proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
@@ -186,6 +294,7 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
+    # gRPC (TLS)
     location ^~ /vless-grpc {
         grpc_set_header X-Real-IP \$remote_addr;
         grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
