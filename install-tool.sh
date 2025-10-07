@@ -85,7 +85,10 @@ apt-get remove --purge exim4 -y
 apt -y install wget curl
 
 # --- Profile settings for vps user ---
-apt-get --reinstall --fix-missing install -y bzip2 gzip coreutils wget screen rsyslog iftop htop net-tools zip unzip wget net-tools curl nano sed screen gnupg gnupg1 bc apt-transport-https build-essential dirmngr libxml-parser-perl neofetch git lsof
+apt update -y && apt install -y \
+  curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
+  cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables \
+  iptables-persistent jq
 echo "" >> .profile
 echo "menu" >> .profile
 
