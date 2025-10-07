@@ -285,7 +285,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name $domain *.$domain;
-    return 301 https://$host$request_uri;
+    return 301 https://\$host\$request_uri;
 }
 
 server {
