@@ -73,155 +73,58 @@ cat > /etc/xray/config.json <<EOF
     {
       "listen": "/run/xray/vless_ws.sock",
       "protocol": "vless",
-      "settings": {
-        "decryption": "none",
-        "clients": [{ "id": "$uuid" }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vless" }
-      }
+      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
     },
     {
       "listen": "/run/xray/vmess_ws.sock",
       "protocol": "vmess",
-      "settings": {
-        "clients": [{ "id": "$uuid", "alterId": 0 }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vmess" }
-      }
+      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
     },
     {
       "listen": "/run/xray/trojan_ws.sock",
       "protocol": "trojan",
-      "settings": {
-        "clients": [{ "password": "$uuid" }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/trojan" }
-      }
-    },
-    {
-      "listen": "0.0.0.0",
-      "port": 2083,
-      "protocol": "trojan",
-      "settings": {
-        "clients": [{ "password": "$uuid" }],
-        "fallbacks": []
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "none"
-      }
+      "settings": { "clients": [{ "password": "$uuid" }] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
     },
     {
       "listen": "127.0.0.1",
       "port": 30300,
       "protocol": "shadowsocks",
-      "settings": {
-        "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }],
-        "network": "tcp,udp"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/ssws" }
-      }
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
     },
     {
       "listen": "/run/xray/vless_grpc.sock",
       "protocol": "vless",
-      "settings": {
-        "decryption": "none",
-        "clients": [{ "id": "$uuid" }]
-      },
-      "streamSettings": {
-        "network": "grpc",
-        "grpcSettings": { "serviceName": "vless-grpc" }
-      }
+      "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
     },
     {
       "listen": "/run/xray/vmess_grpc.sock",
       "protocol": "vmess",
-      "settings": {
-        "clients": [{ "id": "$uuid", "alterId": 0 }]
-      },
-      "streamSettings": {
-        "network": "grpc",
-        "grpcSettings": { "serviceName": "vmess-grpc" }
-      }
+      "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
     },
     {
       "listen": "/run/xray/trojan_grpc.sock",
       "protocol": "trojan",
-      "settings": {
-        "clients": [{ "password": "$uuid" }]
-      },
-      "streamSettings": {
-        "network": "grpc",
-        "grpcSettings": { "serviceName": "trojan-grpc" }
-      }
+      "settings": { "clients": [{ "password": "$uuid" }] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
     },
     {
       "listen": "127.0.0.1",
       "port": 30310,
       "protocol": "shadowsocks",
-      "settings": {
-        "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }],
-        "network": "tcp,udp"
-      },
-      "streamSettings": {
-        "network": "grpc",
-        "grpcSettings": { "serviceName": "ss-grpc" }
-      }
+      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$uuid" }], "network": "tcp,udp" },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } }
     }
   ],
   "outbounds": [
     { "protocol": "freedom" },
     { "protocol": "blackhole", "tag": "blocked" }
-  ],
-  "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "ip": [
-          "0.0.0.0/8","10.0.0.0/8","100.64.0.0/10",
-          "169.254.0.0/16","172.16.0.0/12",
-          "192.168.0.0/16","198.18.0.0/15",
-          "::1/128","fc00::/7","fe80::/10"
-        ],
-        "outboundTag": "blocked"
-      },
-      {
-        "inboundTag": ["api"],
-        "outboundTag": "api",
-        "type": "field"
-      },
-      {
-        "type": "field",
-        "outboundTag": "blocked",
-        "protocol": ["bittorrent"]
-      }
-    ]
-  },
-  "stats": {},
-  "api": {
-    "services": ["StatsService"],
-    "tag": "api"
-  },
-  "policy": {
-    "levels": {
-      "0": { "statsUserDownlink": true, "statsUserUplink": true }
-    },
-    "system": {
-      "statsInboundUplink": true,
-      "statsInboundDownlink": true,
-      "statsOutboundUplink": true,
-      "statsOutboundDownlink": true
-    }
-  }
+  ]
 }
 EOF
 
