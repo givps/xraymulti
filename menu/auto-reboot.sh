@@ -3,7 +3,6 @@
 # Name    : Auto-Reboot VPS
 # =========================================
 set -euo pipefail
-IFS=$'\n\t'
 
 # --- Paths ---
 AUTO_REBOOT_SCRIPT="/usr/bin/auto_reboot"
