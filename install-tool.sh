@@ -31,31 +31,6 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-# warna
-green='\e[1;32m'; orange='\e[1;33m'; nc='\e[0m'
-
-echo -e "${green}[INFO] Checking essential packages...${nc}"
-
-DEPENDENCIES=(wget curl sudo screen)
-MISSING=()
-
-for cmd in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        MISSING+=("$cmd")
-    fi
-done
-
-if ((${#MISSING[@]})); then
-    echo -e "${orange}[INFO] Missing packages: ${MISSING[*]}${nc}"
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y
-    apt-get install -y --no-install-recommends "${MISSING[@]}"
-    unset DEBIAN_FRONTEND
-    echo -e "${green}[OK] Installed missing dependencies.${nc}"
-else
-    echo -e "${green}[OK] All dependencies already installed.${nc}"
-fi
-
 # --- Setup rc-local service ---
 cat > /etc/systemd/system/rc-local.service <<-END
 [Unit]
@@ -110,24 +85,16 @@ echo -e "${green}[INFO] Updating system...${nc}"
 apt update -y
 apt upgrade -y
 apt dist-upgrade -y
-
-# --- Remove unused packages ---
-apt-get remove --purge ufw firewalld exim4 -y || true
+apt-get remove --purge ufw firewalld -y
+apt-get remove --purge exim4 -y
 
 # --- Install essential tools ---
-apt-get install -y --no-install-recommends \
-  wget curl net-tools ruby python3 golang-go make cmake coreutils \
-  rsyslog zip unzip nano sed gnupg bc jq apt-transport-https \
-  build-essential dirmngr libxml-parser-perl neofetch git lsof \
-  libsqlite3-dev zlib1g-dev libz-dev gcc g++ libreadline-dev \
-  libssl-dev dos2unix bzip2 gzip screen iftop htop ipset iptables-persistent \
-  iproute2 certbot nginx socat
+apt -y install wget curl
 
 # --- Profile settings for vps user ---
-useradd -m vps || true
-echo "clear" >> /home/vps/.profile
-echo "neofetch" >> /home/vps/.profile
-chown vps:vps /home/vps/.profile
+apt-get --reinstall --fix-missing install -y bzip2 gzip coreutils wget screen rsyslog iftop htop net-tools zip unzip wget net-tools curl nano sed screen gnupg gnupg1 bc apt-transport-https build-essential dirmngr libxml-parser-perl neofetch git lsof
+echo "" >> .profile
+echo "menu" >> .profile
 
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx...${nc}"
