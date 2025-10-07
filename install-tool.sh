@@ -92,6 +92,11 @@ apt update -y && apt install -y \
 echo "" >> .profile
 echo "menu" >> .profile
 
+# Remove old NGINX
+echo -e "${green}[INFO] Removing old NGINX...${nc}"
+sudo apt remove -y nginx nginx-common
+sudo apt update -y
+
 # install webserver
 apt -y install nginx
 cd
