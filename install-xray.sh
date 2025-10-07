@@ -375,91 +375,115 @@ cat > /etc/nginx/conf.d/xray.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
-    server_name $domain;
-
-    # Redirect all HTTP to HTTPS
+    server_name xray-49444.givps.com;
     return 301 https://$host$request_uri;
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-    server_name $domain;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name xray-49444.givps.com;
 
-    # SSL
     ssl_certificate /etc/xray/xray.crt;
     ssl_certificate_key /etc/xray/xray.key;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:..."; # sesuaikan
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1h;
 
-    # Logging
-    access_log /var/log/nginx/xray-access.log;
-    error_log /var/log/nginx/xray-error.log;
-
-    # ---------------------------
+    # -------------------------
     # VLESS WS
+    # -------------------------
     location /vless {
         proxy_redirect off;
-        proxy_pass http://unix:/run/xray/vless_ws.sock;
+        proxy_pass http://127.0.0.1:10085;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # VLESS gRPC
-    location /vless-grpc {
-        grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
-        grpc_set_header Host $host;
-    }
-
+    # -------------------------
     # VMess WS
+    # -------------------------
     location /vmess {
         proxy_redirect off;
-        proxy_pass http://unix:/run/xray/vmess_ws.sock;
+        proxy_pass http://127.0.0.1:30310;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # VMess gRPC
-    location /vmess-grpc {
-        grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
-        grpc_set_header Host $host;
-    }
-
+    # -------------------------
     # Trojan WS
+    # -------------------------
     location /trojan {
         proxy_redirect off;
-        proxy_pass http://unix:/run/xray/trojan_ws.sock;
+        proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # Trojan gRPC
-    location /trojan-grpc {
-        grpc_pass grpc://unix:/run/xray/trojan_grpc.sock;
-        grpc_set_header Host $host;
-    }
-
+    # -------------------------
     # Shadowsocks WS
+    # -------------------------
     location /ssws {
         proxy_redirect off;
-        proxy_pass http://unix:/run/xray/ss_ws.sock;
+        proxy_pass http://127.0.0.1:10085; # sama dengan VLESS WS
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # Shadowsocks gRPC
-    location /ss-grpc {
-        grpc_pass grpc://unix:/run/xray/ss_grpc.sock;
+    # -------------------------
+    # VLESS gRPC
+    # -------------------------
+    location /vless-grpc {
+        grpc_pass grpc://127.0.0.1:30300;
+        grpc_set_header X-Real-IP $remote_addr;
         grpc_set_header Host $host;
+    }
+
+    # -------------------------
+    # VMess gRPC
+    # -------------------------
+    location /vmess-grpc {
+        grpc_pass grpc://127.0.0.1:30310;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header Host $host;
+    }
+
+    # -------------------------
+    # Trojan gRPC
+    # -------------------------
+    location /trojan-grpc {
+        grpc_pass grpc://127.0.0.1:10085;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header Host $host;
+    }
+
+    # -------------------------
+    # Shadowsocks gRPC
+    # -------------------------
+    location /ss-grpc {
+        grpc_pass grpc://127.0.0.1:30310;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header Host $host;
+    }
+
+    # Optional: Default location
+    location / {
+        root /var/www/html;
+        index index.html;
     }
 }
 EOF
