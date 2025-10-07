@@ -3,7 +3,6 @@
 # Install XRAY Menu Scripts
 # ==========================================
 set -euo pipefail
-IFS=$'\n\t'
 
 # --- Variables ---
 XRAY_DIR="/usr/bin"
