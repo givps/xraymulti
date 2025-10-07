@@ -374,24 +374,30 @@ cat > /etc/nginx/conf.d/xray.conf <<EOF
 # /etc/nginx/conf.d/xray.conf
 server {
     listen 80;
-    server_name $domain *.$domain;
-    
+    listen [::]:80;
+    server_name $domain;
+
     # Redirect all HTTP to HTTPS
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name $domain *.$domain;
+    listen [::]:443 ssl http2;
+    server_name $domain;
 
+    # SSL
     ssl_certificate /etc/xray/xray.crt;
     ssl_certificate_key /etc/xray/xray.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
-    # --------------------
+    # Logging
+    access_log /var/log/nginx/xray-access.log;
+    error_log /var/log/nginx/xray-error.log;
+
+    # ---------------------------
     # VLESS WS
-    # --------------------
     location /vless {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vless_ws.sock;
@@ -399,24 +405,15 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # --------------------
     # VLESS gRPC
-    # --------------------
     location /vless-grpc {
         grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 
-    # --------------------
     # VMess WS
-    # --------------------
     location /vmess {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vmess_ws.sock;
@@ -424,24 +421,15 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # --------------------
     # VMess gRPC
-    # --------------------
     location /vmess-grpc {
         grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 
-    # --------------------
     # Trojan WS
-    # --------------------
     location /trojan {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/trojan_ws.sock;
@@ -449,24 +437,15 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # --------------------
     # Trojan gRPC
-    # --------------------
     location /trojan-grpc {
         grpc_pass grpc://unix:/run/xray/trojan_grpc.sock;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 
-    # --------------------
     # Shadowsocks WS
-    # --------------------
     location /ssws {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/ss_ws.sock;
@@ -474,18 +453,11 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # --------------------
     # Shadowsocks gRPC
-    # --------------------
     location /ss-grpc {
         grpc_pass grpc://unix:/run/xray/ss_grpc.sock;
-        grpc_set_header X-Real-IP $remote_addr;
-        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $host;
     }
 }
