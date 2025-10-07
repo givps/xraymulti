@@ -65,7 +65,6 @@ else
 fi
 export CF_Token
 
-
 # ------------------------------------------
 # Install dependencies
 # ------------------------------------------
@@ -169,267 +168,877 @@ echo -e "Key        : /etc/xray/xray.key"
 echo -e "${green}XRAY Core Installer${nc}"
 echo -e "${yellow}Progress...${nc}"
 
+MYIP=$(wget -qO- ipv4.icanhazip.com || curl -sS ifconfig.me)
+
 domain=$(cat /etc/xray/domain)
-
-# -------------------------------
-# Install dependencies
-# -------------------------------
-echo -e "[${green}INFO${nc}] Installing dependencies..."
+sleep 1
+echo -e "[ ${green}INFO${nc} ] XRAY Core Installation Begin . . . "
 apt update -y
-apt install -y curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
-cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables iptables-persistent jq nginx
-
-# -------------------------------
-# Timezone & sync
-# -------------------------------
-echo -e "[${green}INFO${nc}] Setting timezone & syncing time..."
-timedatectl set-timezone Asia/Jakarta
+apt upgrade -y
+apt install socat -y
+apt install python -y
+apt install curl -y
+apt install wget -y
+apt install sed -y
+apt install nano -y
+apt install python3 -y
+apt install curl socat xz-utils wget apt-transport-https gnupg gnupg2 gnupg1 dnsutils lsb-release -y 
+apt install socat cron bash-completion ntpdate -y
+ntpdate pool.ntp.org
+apt -y install chrony
 timedatectl set-ntp true
-systemctl enable chrony --now
-chronyc -a makestep
+systemctl enable chronyd && systemctl restart chronyd
+systemctl enable chrony && systemctl restart chrony
+timedatectl set-timezone Asia/Kuala_Lumpur
+chronyc sourcestats -v
+chronyc tracking -v
+date
+apt install zip -y
+apt install curl pwgen openssl netcat cron -y
 
-# -------------------------------
-# Prepare directories
-# -------------------------------
-echo -e "[${green}INFO${nc}] Preparing directories..."
-install -d -m 755 -o www-data -g www-data /run/xray /var/log/xray /etc/xray
-touch /var/log/xray/{access.log,error.log,access2.log,error2.log}
-chmod 644 /var/log/xray/*.log
+mkdir -p /etc/core
 
-# -------------------------------
-# Install Xray
-# -------------------------------
-echo -e "[${green}INFO${nc}] Installing Xray core..."
-bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 1.5.6
+# Set GitHub base URL
+BASE_URL="https://github.com/dharak36/Xray-core/releases/download/v1.0.0"
 
-# -------------------------------
-# Create Xray config
-# -------------------------------
-echo -e "[${green}INFO${nc}] Generating Xray config..."
+# Detect system architecture
+ARCH=$(uname -m)
+if [[ "$ARCH" == "x86_64" ]]; then
+    FILE_NAME="xray.linux.64bit"
+elif [[ "$ARCH" == "i386" || "$ARCH" == "i686" ]]; then
+    FILE_NAME="xray.linux.32bit"
+else
+    echo "Architecture $ARCH is not supported!"
+    exit 1
+fi
+
+# Download Xray Core according to architecture
+wget -O /etc/core/xray "$BASE_URL/$FILE_NAME"
+
+# Make it executable
+chmod +x /etc/core/xray
+
+# Verify installation
+echo "Xray Core successfully downloaded for architecture $ARCH"
+
 uuid=$(cat /proc/sys/kernel/random/uuid)
+mkdir -p /var/log/xray
 
-cat >/etc/xray/config.json <<EOF
+cat> /etc/xray/config.json << END
 {
+  "comment": "VMESS TLS",
   "log": {
     "access": "/var/log/xray/access.log",
     "error": "/var/log/xray/error.log",
-    "loglevel": "warning"
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 1311,
+      "listen": "127.0.0.1",
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "${uuid}",
+            "alterId": 0,
+            "level": 0,
+            "email": ""
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings":
+            {
+              "acceptProxyProtocol": true,
+              "path": "/vmess"
+            }
+      }
+    }
+  ],
+    "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true
+    }
+  }
+}
+{
+  "comment": "VMESS NON-TLS",
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info"
   },
   "inbounds": [
     {
       "listen": "127.0.0.1",
       "port": 10085,
       "protocol": "dokodemo-door",
-      "settings": { "address": "127.0.0.1" },
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
+    },
+    {
+     "listen": "127.0.0.1",
+     "port": "23456",
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "${uuid}",
+            "alterId": 0,
+            "email": ""
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+	"security": "none",
+        "wsSettings": {
+          "path": "/vmess",
+          "headers": {
+            "Host": ""
+          }
+         },
+        "quicSettings": {},
+        "sockopt": {
+          "mark": 0,
+          "tcpFastOpen": true
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      }
+    }
+  ],
+"outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink" : true,
+      "statsOutboundDownlink" : true
+    }
+  }
+}
+{
+  "comment": "VLESS TLS",
+  "log": {
+    "access": "/var/log/xray/access2.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 1312,
+      "listen": "127.0.0.1",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "${uuid}",
+            "level": 0,
+            "email": ""
+          }
+        ],
+        "decryption": "none"
+      },
+	  "encryption": "none",
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings":
+            {
+              "acceptProxyProtocol": true,
+              "path": "/vless"
+            }
+      }
+    }
+  ],
+    "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true
+    }
+  }
+}
+{
+  "comment": "VLESS NON-TLS",
+  "log": {
+    "access": "/var/log/xray/access2.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
+    },
+    {
+     "listen": "127.0.0.1",
+     "port": "14016",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "${uuid}",
+            "level": 0,
+            "email": ""
+          }
+        ],
+        "decryption": "none"
+      },
+      "encryption": "none",
+      "streamSettings": {
+        "network": "ws",
+	"security": "none",
+        "wsSettings": {
+          "path": "/vless",
+          "headers": {
+            "Host": ""
+          }
+         },
+        "quicSettings": {},
+        "sockopt": {
+          "mark": 0,
+          "tcpFastOpen": true
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      }
+    }
+  ],
+"outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink" : true,
+      "statsOutboundDownlink" : true
+    }
+  }
+}
+{
+  "comment": "TROJAN TLS",
+  "log": {
+    "access": "/var/log/xray/access3.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 1313,
+      "listen": "127.0.0.1",
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "${uuid}",
+            "level": 0,
+            "email": ""
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings":
+            {
+              "acceptProxyProtocol": true,
+              "path": "/trojan"
+            }
+      }
+    }
+  ],
+    "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true
+    }
+  }
+}
+{
+  "comment": "TROJAN NON TLS",
+"log": {
+        "access": "/var/log/xray/access3.log",
+        "error": "/var/log/xray/error.log",
+        "loglevel": "info"
+    },
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
       "tag": "api"
     },
     {
       "listen": "127.0.0.1",
-      "port": 10001,
-      "protocol": "vless",
-      "settings": { "clients": [{"id": "$uuid"}], "decryption": "none" },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } },
-      "tag": "vless-ws"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10002,
-      "protocol": "vmess",
-      "settings": { "clients": [{"id": "$uuid"}] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } },
-      "tag": "vmess-ws"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10003,
+      "port": "25432",
       "protocol": "trojan",
-      "settings": { "clients": [{"password": "$uuid"}] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } },
-      "tag": "trojan-ws"
+      "settings": {
+        "clients": [
+          {
+            "password": "${uuid}",
+            "level": 0,
+            "email": ""
+          }
+        ],
+        "decryption": "none"
+      },
+            "streamSettings": {
+              "network": "ws",
+              "security": "none",
+              "wsSettings": {
+                    "path": "/trojan",
+                    "headers": {
+                    "Host": ""
+                    }
+                }
+            }
+        }
+    ],
+"outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
     },
     {
-      "listen": "127.0.0.1",
-      "port": 10004,
-      "protocol": "shadowsocks",
-      "settings": { "clients": [{"method": "aes-128-gcm","password": "$uuid"}] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } },
-      "tag": "ss-ws"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10005,
-      "protocol": "vless",
-      "settings": { "clients": [{"id": "$uuid"}], "decryption": "none" },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } },
-      "tag": "vless-grpc"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10006,
-      "protocol": "vmess",
-      "settings": { "clients": [{"id": "$uuid"}] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } },
-      "tag": "vmess-grpc"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10007,
-      "protocol": "trojan",
-      "settings": { "clients": [{"password": "$uuid"}] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } },
-      "tag": "trojan-grpc"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10008,
-      "protocol": "shadowsocks",
-      "settings": { "clients": [{"method": "aes-128-gcm","password": "$uuid"}] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } },
-      "tag": "ss-grpc"
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
     }
   ],
-  "outbounds": [
-    { "protocol": "freedom" },
-    { "protocol": "blackhole", "tag": "blocked" }
-  ]
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.0.2.0/24",
+          "192.168.0.0/16",
+          "198.18.0.0/15",
+          "198.51.100.0/24",
+          "203.0.113.0/24",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outboundTag": "blocked"
+      },
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "api": {
+    "services": [
+      "StatsService"
+    ],
+    "tag": "api"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink" : true,
+      "statsOutboundDownlink" : true
+    }
+  }
 }
-EOF
+END
 
-# -------------------------------
-# Create systemd services
-# -------------------------------
-echo -e "[${green}INFO${nc}] Creating systemd services..."
+rm -rf /etc/systemd/system/xray.service.d
+rm -rf /etc/systemd/system/xray@.service.d
 
-cat > /etc/systemd/system/xray.service << 'EOF'
+cat> /etc/systemd/system/xray.service << END
 [Unit]
-Description=Xray Service
+Description=XRAY-Websocket Service
+Documentation=https://github.com/XTLS/Xray-core https://github.com/dharak36/Xray-core
 After=network.target nss-lookup.target
 
 [Service]
-User=www-data
+User=root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
-ProtectSystem=full
-ProtectHome=true
-PrivateTmp=true
-ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
+ExecStart=/etc/core/xray run -config /etc/xray/config.json
 Restart=on-failure
-RestartSec=5
+RestartSec=3s
+RestartPreventExitStatus=23
 LimitNPROC=10000
 LimitNOFILE=1000000
 
 [Install]
 WantedBy=multi-user.target
-EOF
 
-cat > /etc/systemd/system/runn.service << 'EOF'
+END
+
+cat> /etc/systemd/system/xray@.service << END
 [Unit]
-Description=Prepare Xray runtime directory
-After=network.target
-Before=xray.service
+Description=XRAY-Websocket Service
+Documentation=https://github.com/XTLS/Xray-core https://github.com/dharak36/Xray-core
+After=network.target nss-lookup.target
 
 [Service]
-Type=oneshot
-ExecStart=/bin/mkdir -p /run/xray
-ExecStartPost=/bin/chown www-data:www-data /run/xray
-RemainAfterExit=yes
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/etc/core/xray run -config /etc/xray/%i.json
+Restart=on-failure
+RestartSec=3s
+RestartPreventExitStatus=23
+LimitNPROC=10000
+LimitNOFILE=1000000
 
 [Install]
 WantedBy=multi-user.target
+
+END
+
+#nginx config
+cat >/etc/nginx/conf.d/xray.conf <<EOF
+    server {
+             listen 80;
+             listen [::]:80;
+             listen 8080;
+             listen [::]:8080;
+             listen 8880;
+             listen [::]:8880;	
+             server_name 127.0.0.1 localhost;
+             ssl_certificate /usr/local/etc/xray/xray.crt;
+             ssl_certificate_key /usr/local/etc/xray/xray.key;
+             ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
+             ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+             root /usr/share/nginx/html;
+        }
 EOF
+sed -i '$ ilocation /' /etc/nginx/conf.d/xray.conf
+sed -i '$ i{' /etc/nginx/conf.d/xray.conf
+sed -i '$ iif ($http_upgrade != "Upgrade") {' /etc/nginx/conf.d/xray.conf
+sed -i '$ irewrite /(.*) /vless break;' /etc/nginx/conf.d/xray.conf
+sed -i '$ i}' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_redirect off;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_pass http://127.0.0.1:14016;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_http_version 1.1;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Real-IP \$remote_addr;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Upgrade \$http_upgrade;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Connection "upgrade";' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Host \$http_host;' /etc/nginx/conf.d/xray.conf
+sed -i '$ i}' /etc/nginx/conf.d/xray.conf
 
-# -------------------------------
-# Create Nginx config with wildcard SSL
-# -------------------------------
-echo -e "[${green}INFO${nc}] Configuring Nginx..."
+sed -i '$ ilocation = /vmess' /etc/nginx/conf.d/xray.conf
+sed -i '$ i{' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_redirect off;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_pass http://127.0.0.1:23456;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_http_version 1.1;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Real-IP \$remote_addr;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Upgrade \$http_upgrade;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Connection "upgrade";' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Host \$http_host;' /etc/nginx/conf.d/xray.conf
+sed -i '$ i}' /etc/nginx/conf.d/xray.conf
 
-cat > /etc/nginx/conf.d/xray.conf <<EOF
-server {
-    listen 80;
-    server_name $domain *.$domain;
-    return 301 https://$host$request_uri;
-}
+sed -i '$ ilocation = /trojan' /etc/nginx/conf.d/xray.conf
+sed -i '$ i{' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_redirect off;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_pass http://127.0.0.1:25432;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_http_version 1.1;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Real-IP \$remote_addr;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Upgrade \$http_upgrade;' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Connection "upgrade";' /etc/nginx/conf.d/xray.conf
+sed -i '$ iproxy_set_header Host \$http_host;' /etc/nginx/conf.d/xray.conf
+sed -i '$ i}' /etc/nginx/conf.d/xray.conf
 
-server {
-    listen 443 ssl http2;
-    server_name $domain *.$domain;
-
-    ssl_certificate /etc/xray/xray.crt;
-    ssl_certificate_key /etc/xray/xray.key;
-    ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
-
-    # VLESS WS
-    location /vless {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-
-    # VMess WS
-    location /vmess {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10002;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-
-    # Trojan WS
-    location /trojan {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10003;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-
-    # Shadowsocks WS
-    location /ssws {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:10004;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-
-    # gRPC
-    location /vless-grpc {
-        grpc_pass grpc://127.0.0.1:10005;
-    }
-    location /vmess-grpc {
-        grpc_pass grpc://127.0.0.1:10006;
-    }
-    location /trojan-grpc {
-        grpc_pass grpc://127.0.0.1:10007;
-    }
-    location /ss-grpc {
-        grpc_pass grpc://127.0.0.1:10008;
-    }
-}
-EOF
-
-# -------------------------------
-# Enable & start services
-# -------------------------------
-echo -e "[${yellow}SERVICE${nc}] Reloading systemd daemon..."
+# enable xray
+echo -e "[ ${green}OK${nc} ] Restart All Service..."
 systemctl daemon-reload
-systemctl enable runn.service
-systemctl restart runn.service
 systemctl enable xray.service
+systemctl start xray.service
 systemctl restart xray.service
 
-echo -e "[${green}INFO${nc}] Enabling and restarting Nginx..."
-nginx -t
+# enable xray vless
+echo -e "[ ${green}OK${nc} ] Restarting Vless"
+systemctl daemon-reload
+systemctl enable xray@vless.service
+systemctl start xray@vless.service
+systemctl restart xray@vless.service
+
+# enable xray vmess
+echo -e "[ ${green}OK${nc} ] Restarting Vmess"
+systemctl daemon-reload
+systemctl enable xray@vmess.service
+systemctl start xray@vmess.service
+systemctl restart xray@vmess.service
+
+# enable xray trojan
+echo -e "[ ${green}OK${nc} ] Restarting Trojan"
+systemctl daemon-reload
+systemctl enable xray@trojan.service
+systemctl start xray@trojan.service
+systemctl restart xray@trojan.service
+
+# enable service nginx
+echo -e "[ ${green}OK${nc} ] Restarting Nginx"
 systemctl enable nginx
+systemctl start nginx
 systemctl restart nginx
 
-echo -e "${yellow}✅ Xray (Vless, Vmess, Trojan WS, SS) & Nginx wildcard SSL are running${nc}"
+# Restart done
+echo -e "[ ${green}OK${nc} ] Restart All Service Done..."
 
