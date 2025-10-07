@@ -86,3 +86,11 @@ log "${green}All services processed successfully.${nc}"
 log "Main log file: ${blue}$LOG_FILE${nc}"
 log "Restart summary: ${blue}$RESTART_LOG${nc}"
 
+# --- Kembali ke menu otomatis ---
+if [[ -t 0 ]] && type menu >/dev/null 2>&1; then
+    echo -e "\n${blue}Press any key to return to menu...${nc}"
+    read -n1 -s -r
+    menu
+fi
+
+
