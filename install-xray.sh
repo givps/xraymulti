@@ -50,17 +50,6 @@ echo -e "[ ${green}INFO${nc} ] Downloading & installing Xray core..."
 bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 1.5.6
 
 # ===============================
-# Setup Nginx
-# ===============================
-echo -e "[ ${green}INFO${nc} ] Resetting Nginx configuration..."
-systemctl stop nginx || true
-systemctl disable nginx || true
-rm -f /etc/nginx/conf.d/alone.conf
-mkdir -p /home/vps/public_html
-chown -R www-data:www-data /home/vps/public_html
-chmod 755 /home/vps/public_html
-
-# ===============================
 # Generate clean Xray config
 # ===============================
 echo -e "[ ${green}INFO${nc} ] Generating Xray config..."
