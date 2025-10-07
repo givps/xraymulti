@@ -24,12 +24,6 @@ echo -e "${green}[INFO] VPS Public IP: $MYIP${nc}"
 # --- Link Hosting ---
 link="raw.githubusercontent.com/givps/xraymulti/master/ssh"
 
-# cek apakah dijalankan sebagai root
-if [[ $EUID -ne 0 ]]; then
-  echo "Please run as root (sudo)." >&2
-  exit 1
-fi
-
 # --- Setup rc-local service ---
 cat > /etc/systemd/system/rc-local.service <<-END
 [Unit]
