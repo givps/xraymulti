@@ -116,20 +116,25 @@ chown vps:vps /home/vps/.profile
 
 # --- Install web server ---
 echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
-sudo systemctl stop nginx
-sudo apt remove --purge nginx nginx-core nginx-common libnginx-mod-* -y
-sudo apt autoremove -y
-sudo apt update
-sudo apt install nginx-full -y
-sudo systemctl enable nginx
-sudo systemctl start nginx
+# install webserver
+apt -y install nginx
+cd
+rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
+wget -O /etc/nginx/nginx.conf "https://${link}/nginx.conf"
+mkdir -p /home/vps/public_html
+wget -O /etc/nginx/conf.d/vps.conf "https://${link}/vps.conf"
+/etc/init.d/nginx restart
 
-# Remove default config
-rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
-
-# Download custom config
-curl -s -k https://${link}/nginx.conf -o /etc/nginx/nginx.conf
-curl -s -k https://${link}/vps.conf -o /etc/nginx/conf.d/vps.conf
+# remove unnecessary files
+cd
+apt autoclean -y
+apt -y remove --purge unscd
+apt-get -y --purge remove samba*;
+apt-get -y --purge remove apache2*;
+apt-get -y --purge remove bind9*;
+apt-get -y remove sendmail*
+apt autoremove -y
 
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
