@@ -25,16 +25,36 @@ echo -e "${green}[INFO] VPS Public IP: $MYIP${nc}"
 # --- Link Hosting ---
 link="raw.githubusercontent.com/givps/xraymulti/master/ssh"
 
-# --- Ensure essential dependencies ---
+# cek apakah dijalankan sebagai root
+if [[ $EUID -ne 0 ]]; then
+  echo "Please run as root (sudo)." >&2
+  exit 1
+fi
+
+# warna
+green='\e[1;32m'; orange='\e[1;33m'; nc='\e[0m'
+
 echo -e "${green}[INFO] Checking essential packages...${nc}"
+
 DEPENDENCIES=(wget curl sudo screen)
+MISSING=()
+
 for cmd in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$cmd" &> /dev/null; then
-        echo -e "${ORANGE}[INFO] Installing missing dependency: $cmd${nc}"
-        apt-get update -y
-        apt-get install -y "$cmd"
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        MISSING+=("$cmd")
     fi
 done
+
+if ((${#MISSING[@]})); then
+    echo -e "${orange}[INFO] Missing packages: ${MISSING[*]}${nc}"
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y --no-install-recommends "${MISSING[@]}"
+    unset DEBIAN_FRONTEND
+    echo -e "${green}[OK] Installed missing dependencies.${nc}"
+else
+    echo -e "${green}[OK] All dependencies already installed.${nc}"
+fi
 
 # --- Setup rc-local service ---
 cat > /etc/systemd/system/rc-local.service <<-END
