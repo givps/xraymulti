@@ -15,16 +15,16 @@ rm -f auto-reboot
 rm -f update-xray
 # download
 cd /usr/bin
-wget -O menu "https://raw.githubusercontent.com/givps/xraymulti/main/menu/menu.sh"
-wget -O create "https://raw.githubusercontent.com/givps/xraymulti/main/menu/create.sh"
-wget -O delete "https://raw.githubusercontent.com/givps/xraymulti/main/menu/delete.sh"
-wget -O crtxray "https://raw.githubusercontent.com/fisabiliyusri/Mantap/main/xray/crtxray.sh"
-wget -O restart-xray "https://raw.githubusercontent.com/givps/xraymulti/main/menu/restart-xray.sh"
-wget -O change-domain "https://raw.githubusercontent.com/givps/xraymulti/main/menu/change-domain.sh"
-wget -O auto-delete "https://raw.githubusercontent.com/givps/xraymulti/main/menu/auto-delete.sh"
-wget -O change-dns "https://raw.githubusercontent.com/givps/xraymulti/main/menu/change-dns.sh"
-wget -O auto-reboot "https://raw.githubusercontent.com/givps/xraymulti/main/menu/auto-reboot.sh"
-wget -O update-xray "https://raw.githubusercontent.com/givps/xraymulti/main/menu/update-xray.sh"
+wget -O menu "https://raw.githubusercontent.com/givps/xraymulti/master/menu/menu.sh"
+wget -O create "https://raw.githubusercontent.com/givps/xraymulti/master/menu/create.sh"
+wget -O delete "https://raw.githubusercontent.com/givps/xraymulti/master/menu/delete.sh"
+wget -O crtxray "https://raw.githubusercontent.com/givps/xraymulti/master/xray/crtxray.sh"
+wget -O restart-xray "https://raw.githubusercontent.com/givps/xraymulti/master/menu/restart-xray.sh"
+wget -O change-domain "https://raw.githubusercontent.com/givps/xraymulti/master/menu/change-domain.sh"
+wget -O auto-delete "https://raw.githubusercontent.com/givps/xraymulti/master/menu/auto-delete.sh"
+wget -O change-dns "https://raw.githubusercontent.com/givps/xraymulti/master/menu/change-dns.sh"
+wget -O auto-reboot "https://raw.githubusercontent.com/givps/xraymulti/master/menu/auto-reboot.sh"
+wget -O update-xray "https://raw.githubusercontent.com/givps/xraymulti/master/update/update-xray.sh"
 # izin
 chmod +x menu
 chmod +x create
