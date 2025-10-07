@@ -381,7 +381,8 @@ server {
 
 server {
     listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen [::]:443 ssl;
+    http2 on;
     server_name $domain *.$domain;
 
     ssl_certificate /etc/xray/xray.crt;
