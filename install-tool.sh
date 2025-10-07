@@ -104,9 +104,9 @@ apt -y install nginx
 cd
 rm -f /etc/nginx/sites-enabled/default
 rm -f /etc/nginx/sites-available/default
-wget -O /etc/nginx/nginx.conf "https://${Server_URL}/nginx.conf"
+wget -O /etc/nginx/nginx.conf "https://${link}/nginx.conf"
 mkdir -p /home/vps/public_html
-wget -O /etc/nginx/conf.d/vps.conf "https://${Server_URL}/vps.conf"
+wget -O /etc/nginx/conf.d/vps.conf "https://${link}/vps.conf"
 /etc/init.d/nginx restart
 
 # --- Setup web root ---
