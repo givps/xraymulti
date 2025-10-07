@@ -2,6 +2,7 @@
 # ==========================================
 # hapus
 cd /usr/bin
+rm -f install-menu.sh
 rm -f menu
 rm -f create
 rm -f delete
