@@ -1,18 +1,157 @@
------END CERTIFICATE-----
-[Tue Oct  7 18:01:17 WIB 2025] Your cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/xray-90201.givps.com.cer
-[Tue Oct  7 18:01:17 WIB 2025] Your cert key is in: /root/.acme.sh/xray-90201.givps.com_ecc/xray-90201.givps.com.key
-[Tue Oct  7 18:01:17 WIB 2025] The intermediate CA cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/ca.cer
-[Tue Oct  7 18:01:17 WIB 2025] And the full-chain cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/fullchain.cer
-Installing certificate...
-[Tue Oct  7 18:01:17 WIB 2025] The domain 'xray-90201.givps.com' seems to already have an ECC cert, let's use it.
-[Tue Oct  7 18:01:17 WIB 2025] Installing key to: /etc/xray/xray.key
-[Tue Oct  7 18:01:17 WIB 2025] Installing full chain to: /etc/xray/xray.crt
-[Tue Oct  7 18:01:17 WIB 2025] Running reload cmd: systemctl restart xray.service
-[Tue Oct  7 18:01:17 WIB 2025] Reload successful
-Adding cron job for auto renew...
-✅ ACME.sh Cloudflare setup completed successfully.
-Certificate: /etc/xray/xray.crt
-Key        : /etc/xray/xray.key
+#!/bin/bash
+set -euo pipefail
+
+# ------------------------------------------
+# Colors
+# ------------------------------------------
+red='\e[1;31m'
+green='\e[0;32m'
+yellow='\e[1;33m'
+blue='\e[1;34m'
+nc='\e[0m'
+
+# ------------------------------------------
+# Log setup
+# ------------------------------------------
+LOG_FILE="/var/log/acme-install.log"
+mkdir -p /var/log
+
+# Auto log rotation (max 1MB, keep 3 backups)
+if [[ -f "$LOG_FILE" ]]; then
+    LOG_SIZE=$(stat -c%s "$LOG_FILE")
+    if (( LOG_SIZE > 1048576 )); then
+        timestamp=$(date +%Y%m%d-%H%M%S)
+        mv "$LOG_FILE" "${LOG_FILE}.${timestamp}.bak"
+        ls -tp /var/log/acme-install.log.*.bak 2>/dev/null | tail -n +4 | xargs -r rm --
+        echo "[$(date)] Log rotated: $LOG_FILE" > "$LOG_FILE"
+    fi
+fi
+
+# Redirect all output to log
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+clear
+echo -e "${green}Starting ACME.sh installation with Cloudflare DNS API...${nc}"
+
+# ------------------------------------------
+# Check domain
+# ------------------------------------------
+if [[ ! -f /etc/xray/domain ]]; then
+    echo -e "${red}[ERROR]${nc} File /etc/xray/domain not found!"
+    exit 1
+fi
+
+domain=$(cat /etc/xray/domain)
+if [[ -z "$domain" ]]; then
+    echo -e "${red}[ERROR]${nc} Domain is empty in /etc/xray/domain!"
+    exit 1
+fi
+
+# ------------------------------------------
+# Cloudflare Token
+# ------------------------------------------
+CF_Token="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
+export CF_Token
+
+# ------------------------------------------
+# Install dependencies
+# ------------------------------------------
+echo -e "${blue}Installing dependencies...${nc}"
+apt update -y >/dev/null 2>&1
+command -v curl >/dev/null 2>&1 || apt install -y curl >/dev/null 2>&1
+command -v jq >/dev/null 2>&1 || apt install -y jq >/dev/null 2>&1
+
+# ------------------------------------------
+# Retry helper
+# ------------------------------------------
+retry() {
+    local MAX_RETRY=5 COUNT=0
+    local CMD=("$@")
+    until [ $COUNT -ge $MAX_RETRY ]; do
+        if "${CMD[@]}"; then
+            return 0
+        fi
+        COUNT=$((COUNT + 1))
+        echo -e "${yellow}Command failed. Retry $COUNT/$MAX_RETRY...${nc}"
+        sleep 3
+    done
+    echo -e "${red}Command failed after $MAX_RETRY retries.${nc}"
+    exit 1
+}
+
+# ------------------------------------------
+# Install acme.sh
+# ------------------------------------------
+ACME_HOME="$HOME/.acme.sh"
+cd "$HOME"
+if [[ ! -d "$ACME_HOME" ]]; then
+    echo -e "${green}Installing acme.sh...${nc}"
+    wget -q -O acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
+    bash acme.sh --install
+    rm -f acme.sh
+fi
+cd "$ACME_HOME"
+
+# ------------------------------------------
+# Install Cloudflare DNS hook
+# ------------------------------------------
+mkdir -p "$ACME_HOME/dnsapi"
+if [[ ! -f "$ACME_HOME/dnsapi/dns_cf.sh" ]]; then
+    echo -e "${green}Installing Cloudflare DNS API hook...${nc}"
+    wget -O "$ACME_HOME/dnsapi/dns_cf.sh" https://raw.githubusercontent.com/acmesh-official/acme.sh/master/dnsapi/dns_cf.sh
+    chmod +x "$ACME_HOME/dnsapi/dns_cf.sh"
+fi
+
+# ------------------------------------------
+# Register Let's Encrypt account
+# ------------------------------------------
+echo -e "${green}Registering ACME account with Let's Encrypt...${nc}"
+retry bash acme.sh --register-account -m ssl@givps.com --server letsencrypt
+
+# ------------------------------------------
+# Issue wildcard certificate
+# ------------------------------------------
+echo -e "${blue}Issuing wildcard certificate for $domain ...${nc}"
+retry bash acme.sh --issue --dns dns_cf -d "$domain" -d "*.$domain" --force --server letsencrypt
+
+# ------------------------------------------
+# Install certificate to /etc/xray
+# ------------------------------------------
+echo -e "${blue}Installing certificate...${nc}"
+mkdir -p /etc/xray
+retry bash acme.sh --installcert -d "$domain" \
+    --fullchainpath /etc/xray/xray.crt \
+    --keypath /etc/xray/xray.key \
+    --reloadcmd "systemctl restart xray.service"
+
+chmod 600 /etc/xray/xray.key
+
+# ------------------------------------------
+# Cron auto renew + log rotate
+# ------------------------------------------
+echo -e "${blue}Adding cron job for auto renew...${nc}"
+CRON_FILE="/etc/cron.d/acme-renew"
+cat > "$CRON_FILE" <<EOF
+# Auto renew ACME.sh every 2 months
+0 3 1 */2 * root $ACME_HOME/acme.sh --cron --home $ACME_HOME > /var/log/acme-renew.log 2>&1
+# Auto log rotation for renew (max 512KB, keep 2 backups)
+0 4 1 */2 * root bash -c '
+if [[ -f /var/log/acme-renew.log ]]; then
+  size=\$(stat -c%s /var/log/acme-renew.log)
+  if (( size > 524288 )); then
+    ts=\$(date +%Y%m%d-%H%M%S)
+    mv /var/log/acme-renew.log /var/log/acme-renew.log.\$ts.bak
+    ls -tp /var/log/acme-renew.log.*.bak 2>/dev/null | tail -n +3 | xargs -r rm --
+  fi
+fi'
+EOF
+
+chmod 644 "$CRON_FILE"
+systemctl restart cron
+
+echo -e "${green}✅ ACME.sh Cloudflare setup completed successfully.${nc}"
+echo -e "Certificate: /etc/xray/xray.crt"
+echo -e "Key        : /etc/xray/xray.key"
 
 echo -e "${GREEN}XRAY Core Installer${NC}"
 echo -e "${YELLOW}Progress...${NC}"
