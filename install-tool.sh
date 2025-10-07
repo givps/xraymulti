@@ -115,7 +115,7 @@ echo "neofetch" >> /home/vps/.profile
 chown vps:vps /home/vps/.profile
 
 # --- Install web server ---
-echo -e "${green}[INFO] Installing Nginx & PHP...${nc}"
+echo -e "${green}[INFO] Installing Nginx...${nc}"
 # install webserver
 apt -y install nginx
 cd
