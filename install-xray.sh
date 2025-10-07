@@ -1,101 +1,18 @@
-#!/bin/bash
-set -euo pipefail
-
-# ------------------------------
-# Colors
-# ------------------------------
-red='\e[1;31m'
-green='\e[0;32m'
-yellow='\e[1;33m'
-blue='\e[1;34m'
-nc='\e[0m'
-
-# ------------------------------
-# Check domain
-# ------------------------------
-if [[ ! -f /etc/xray/domain ]]; then
-    echo -e "${red}[ERROR]${nc} File /etc/xray/domain not found!"
-    exit 1
-fi
-
-domain=$(cat /etc/xray/domain)
-if [[ -z "$domain" ]]; then
-    echo -e "${red}[ERROR]${nc} Domain is empty in /etc/xray/domain!"
-    exit 1
-fi
-
-# ------------------------------
-# Cloudflare API token
-# ------------------------------
-CF_Token="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
-export CF_Token
-
-# ------------------------------
-# Install dependencies
-# ------------------------------
-echo -e "${blue}Installing dependencies...${nc}"
-apt update -y >/dev/null 2>&1
-command -v curl >/dev/null 2>&1 || apt install -y curl >/dev/null 2>&1
-command -v jq >/dev/null 2>&1 || apt install -y jq >/dev/null 2>&1
-
-# ------------------------------
-# Retry helper
-# ------------------------------
-retry() {
-    local MAX_RETRY=5 COUNT=0
-    local CMD=("$@")
-    until [ $COUNT -ge $MAX_RETRY ]; do
-        if "${CMD[@]}"; then
-            return 0
-        fi
-        COUNT=$((COUNT + 1))
-        echo -e "${yellow}Command failed. Retry $COUNT/$MAX_RETRY...${nc}"
-        sleep 3
-    done
-    echo -e "${red}Command failed after $MAX_RETRY retries.${nc}"
-    exit 1
-}
-
-# ------------------------------
-# Install acme.sh
-# ------------------------------
-cd /root/
-if [[ ! -d ~/.acme.sh ]]; then
-    echo -e "${green}Installing acme.sh...${nc}"
-    wget -q -O acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
-    bash acme.sh --install
-    rm -f acme.sh
-fi
-cd ~/.acme.sh
-
-# ------------------------------
-# Register account (Let's Encrypt)
-# ------------------------------
-echo -e "${green}Registering ACME account with Let's Encrypt...${nc}"
-retry bash acme.sh --register-account -m ssl@givps.com --server letsencrypt
-
-# ------------------------------
-# Issue wildcard certificate using Cloudflare DNS
-# ------------------------------
-echo -e "${blue}Issuing wildcard certificate for $domain ...${nc}"
-retry bash acme.sh --issue --dns dns_cf -d "$domain" -d "*.$domain" --server letsencrypt --force
-
-# ------------------------------
-# Install certificate to /etc/xray
-# ------------------------------
-echo -e "${blue}Installing certificate...${nc}"
-mkdir -p /etc/xray
-retry bash acme.sh --installcert -d "$domain" \
-    --fullchainpath /etc/xray/xray.crt \
-    --keypath /etc/xray/xray.key \
-    --reloadcmd "systemctl restart xray.service"
-
-chmod 600 /etc/xray/xray.key
-
-echo -e "${green}✅ Certificate installed successfully!${nc}"
-echo "Domain: $domain"
-echo "Fullchain: /etc/xray/xray.crt"
-echo "Key: /etc/xray/xray.key"
+-----END CERTIFICATE-----
+[Tue Oct  7 18:01:17 WIB 2025] Your cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/xray-90201.givps.com.cer
+[Tue Oct  7 18:01:17 WIB 2025] Your cert key is in: /root/.acme.sh/xray-90201.givps.com_ecc/xray-90201.givps.com.key
+[Tue Oct  7 18:01:17 WIB 2025] The intermediate CA cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/ca.cer
+[Tue Oct  7 18:01:17 WIB 2025] And the full-chain cert is in: /root/.acme.sh/xray-90201.givps.com_ecc/fullchain.cer
+Installing certificate...
+[Tue Oct  7 18:01:17 WIB 2025] The domain 'xray-90201.givps.com' seems to already have an ECC cert, let's use it.
+[Tue Oct  7 18:01:17 WIB 2025] Installing key to: /etc/xray/xray.key
+[Tue Oct  7 18:01:17 WIB 2025] Installing full chain to: /etc/xray/xray.crt
+[Tue Oct  7 18:01:17 WIB 2025] Running reload cmd: systemctl restart xray.service
+[Tue Oct  7 18:01:17 WIB 2025] Reload successful
+Adding cron job for auto renew...
+✅ ACME.sh Cloudflare setup completed successfully.
+Certificate: /etc/xray/xray.crt
+Key        : /etc/xray/xray.key
 
 echo -e "${GREEN}XRAY Core Installer${NC}"
 echo -e "${YELLOW}Progress...${NC}"
