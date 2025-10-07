@@ -10,6 +10,7 @@ set -euo pipefail
 red='\e[1;31m'
 green='\e[0;32m'
 yellow='\e[1;33m'
+blue='\e[1;34m'
 nc='\e[0m'
 
 # ==============================
