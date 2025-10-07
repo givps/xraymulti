@@ -224,19 +224,22 @@ cat >/etc/xray/config.json <<EOF
       "tag": "api"
     },
     {
-      "listen": "/run/xray/vless_ws.sock",
+      "listen": "127.0.0.1",
+      "port": 30000,
       "protocol": "vless",
       "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
     },
     {
-      "listen": "/run/xray/vmess_ws.sock",
+      "listen": "127.0.0.1",
+      "port": 30001,
       "protocol": "vmess",
       "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
     },
     {
-      "listen": "/run/xray/trojan_ws.sock",
+      "listen": "127.0.0.1",
+      "port": 30002,
       "protocol": "trojan",
       "settings": { "clients": [{ "password": "$uuid" }] },
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
@@ -249,19 +252,22 @@ cat >/etc/xray/config.json <<EOF
       "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
     },
     {
-      "listen": "/run/xray/vless_grpc.sock",
+      "listen": "127.0.0.1",
+      "port": 30010,
       "protocol": "vless",
       "settings": { "decryption": "none", "clients": [{ "id": "$uuid" }] },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
     },
     {
-      "listen": "/run/xray/vmess_grpc.sock",
+      "listen": "127.0.0.1",
+      "port": 30011,
       "protocol": "vmess",
       "settings": { "clients": [{ "id": "$uuid", "alterId": 0 }] },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
     },
     {
-      "listen": "/run/xray/trojan_grpc.sock",
+      "listen": "127.0.0.1",
+      "port": 30012,
       "protocol": "trojan",
       "settings": { "clients": [{ "password": "$uuid" }] },
       "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
@@ -277,47 +283,7 @@ cat >/etc/xray/config.json <<EOF
   "outbounds": [
     { "protocol": "freedom" },
     { "protocol": "blackhole", "tag": "blocked" }
-  ],
-  "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "ip": [
-          "0.0.0.0/8","10.0.0.0/8","100.64.0.0/10",
-          "169.254.0.0/16","172.16.0.0/12",
-          "192.168.0.0/16","198.18.0.0/15",
-          "::1/128","fc00::/7","fe80::/10"
-        ],
-        "outboundTag": "blocked"
-      },
-      {
-        "inboundTag": ["api"],
-        "outboundTag": "api",
-        "type": "field"
-      },
-      {
-        "type": "field",
-        "outboundTag": "blocked",
-        "protocol": ["bittorrent"]
-      }
-    ]
-  },
-  "policy": {
-    "levels": {
-      "0": { "statsUserDownlink": true, "statsUserUplink": true }
-    },
-    "system": {
-      "statsInboundUplink": true,
-      "statsInboundDownlink": true,
-      "statsOutboundUplink": true,
-      "statsOutboundDownlink": true
-    }
-  },
-  "stats": {},
-  "api": {
-    "services": ["StatsService"],
-    "tag": "api"
-  }
+  ]
 }
 EOF
 
