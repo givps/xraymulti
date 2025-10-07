@@ -1,8 +1,4 @@
 #!/bin/bash
-# ==========================================
-# ACME.sh Cloudflare Installer + Auto Renew
-# ==========================================
-
 set -euo pipefail
 
 # ------------------------------------------
@@ -55,11 +51,6 @@ fi
 # Cloudflare Token
 # ------------------------------------------
 CF_Token="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
-if [[ -z "$CF_Token" ]]; then
-    echo -e "${yellow}[INFO]${nc} Enter your Cloudflare API Token (Global or DNS Edit Zone):"
-    read -rp "Token: " CF_Token
-    echo
-fi
 export CF_Token
 
 # ------------------------------------------
@@ -91,26 +82,37 @@ retry() {
 # ------------------------------------------
 # Install acme.sh
 # ------------------------------------------
-cd /root/
-if [[ ! -d ~/.acme.sh ]]; then
+ACME_HOME="$HOME/.acme.sh"
+cd "$HOME"
+if [[ ! -d "$ACME_HOME" ]]; then
     echo -e "${green}Installing acme.sh...${nc}"
     wget -q -O acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
     bash acme.sh --install
     rm -f acme.sh
 fi
-cd ~/.acme.sh
+cd "$ACME_HOME"
+
+# ------------------------------------------
+# Install Cloudflare DNS hook
+# ------------------------------------------
+mkdir -p "$ACME_HOME/dnsapi"
+if [[ ! -f "$ACME_HOME/dnsapi/dns_cf.sh" ]]; then
+    echo -e "${green}Installing Cloudflare DNS API hook...${nc}"
+    wget -O "$ACME_HOME/dnsapi/dns_cf.sh" https://raw.githubusercontent.com/acmesh-official/acme.sh/master/dnsapi/dns_cf.sh
+    chmod +x "$ACME_HOME/dnsapi/dns_cf.sh"
+fi
 
 # ------------------------------------------
 # Register Let's Encrypt account
 # ------------------------------------------
-echo -e "${green}Registering ACME account...${nc}"
+echo -e "${green}Registering ACME account with Let's Encrypt...${nc}"
 retry bash acme.sh --register-account -m ssl@givps.com --server letsencrypt
 
 # ------------------------------------------
-# Issue certificate
+# Issue wildcard certificate
 # ------------------------------------------
-echo -e "${blue}Issuing certificate for: $domain and *.$domain ...${nc}"
-retry bash acme.sh --issue --dns dns_cf -d "$domain" -d "*.$domain" --force
+echo -e "${blue}Issuing wildcard certificate for $domain ...${nc}"
+retry bash acme.sh --issue --dns dns_cf -d "$domain" -d "*.$domain" --force --server letsencrypt
 
 # ------------------------------------------
 # Install certificate to /etc/xray
@@ -131,7 +133,7 @@ echo -e "${blue}Adding cron job for auto renew...${nc}"
 CRON_FILE="/etc/cron.d/acme-renew"
 cat > "$CRON_FILE" <<EOF
 # Auto renew ACME.sh every 2 months
-0 3 1 */2 * root /root/.acme.sh/acme.sh --cron --home /root/.acme.sh > /var/log/acme-renew.log 2>&1
+0 3 1 */2 * root $ACME_HOME/acme.sh --cron --home $ACME_HOME > /var/log/acme-renew.log 2>&1
 # Auto log rotation for renew (max 512KB, keep 2 backups)
 0 4 1 */2 * root bash -c '
 if [[ -f /var/log/acme-renew.log ]]; then
@@ -147,37 +149,10 @@ EOF
 chmod 644 "$CRON_FILE"
 systemctl restart cron
 
-# ------------------------------------------
-# Restart Xray if not active
-# ------------------------------------------
-if ! systemctl is-active --quiet xray.service; then
-    echo -e "${yellow}Xray service is not active, starting...${nc}"
-    systemctl start xray.service
-fi
+echo -e "${green}✅ ACME.sh Cloudflare setup completed successfully.${nc}"
+echo -e "Certificate: /etc/xray/xray.crt"
+echo -e "Key        : /etc/xray/xray.key"
 
-# ------------------------------------------
-# Write installation log
-# ------------------------------------------
-echo -e "ACME.sh Certificate Installer (Cloudflare)
-Domain         : $domain
-Certificate    : /etc/xray/xray.crt
-Private Key    : /etc/xray/xray.key
-ACME Log       : /var/log/acme-install.log
-Renew Log      : /var/log/acme-renew.log
-Cron File      : /etc/cron.d/acme-renew
-Installed at   : $(date)
-" >> /root/log-install.txt
-
-# ------------------------------------------
-# Finished
-# ------------------------------------------
-echo -e "${green}Certificate installed successfully & auto-renew enabled!${nc}"
-echo -e "${blue}Domain: ${nc}$domain"
-echo -e "${blue}Cert : ${nc}/etc/xray/xray.crt"
-echo -e "${blue}Key  : ${nc}/etc/xray/xray.key"
-echo -e "${green}Auto renew cron: ${nc}/etc/cron.d/acme-renew"
-echo -e "${green}Install log: ${nc}/var/log/acme-install.log"
-echo -e "${green}Renew log:   ${nc}/var/log/acme-renew.log"
 # --------------------------
 # Return to menu if interactive
 # --------------------------
