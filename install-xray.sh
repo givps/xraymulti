@@ -225,66 +225,73 @@ cat >/etc/xray/config.json <<EOF
     },
     {
       "listen": "127.0.0.1",
-      "port": 30001,
+      "port": 10001,
       "protocol": "vless",
-      "settings": { "clients": [{ "id": "$UUID" }], "decryption": "none" },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } }
+      "settings": { "clients": [{"id": "$uuid"}], "decryption": "none" },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vless" } },
+      "tag": "vless-ws"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30002,
+      "port": 10002,
       "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$UUID", "alterId": 0 }] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } }
+      "settings": { "clients": [{"id": "$uuid"}] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/vmess" } },
+      "tag": "vmess-ws"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30003,
+      "port": 10003,
       "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$UUID" }] },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } }
+      "settings": { "clients": [{"password": "$uuid"}] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/trojan" } },
+      "tag": "trojan-ws"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30004,
+      "port": 10004,
       "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$UUID" }], "network": "tcp,udp" },
-      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } }
+      "settings": { "clients": [{"method": "aes-128-gcm","password": "$uuid"}] },
+      "streamSettings": { "network": "ws", "wsSettings": { "path": "/ssws" } },
+      "tag": "ss-ws"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30011,
+      "port": 10005,
       "protocol": "vless",
-      "settings": { "clients": [{ "id": "$UUID" }], "decryption": "none" },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } }
+      "settings": { "clients": [{"id": "$uuid"}], "decryption": "none" },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vless-grpc" } },
+      "tag": "vless-grpc"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30012,
+      "port": 10006,
       "protocol": "vmess",
-      "settings": { "clients": [{ "id": "$UUID", "alterId": 0 }] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } }
+      "settings": { "clients": [{"id": "$uuid"}] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "vmess-grpc" } },
+      "tag": "vmess-grpc"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30013,
+      "port": 10007,
       "protocol": "trojan",
-      "settings": { "clients": [{ "password": "$UUID" }] },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } }
+      "settings": { "clients": [{"password": "$uuid"}] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "trojan-grpc" } },
+      "tag": "trojan-grpc"
     },
     {
       "listen": "127.0.0.1",
-      "port": 30014,
+      "port": 10008,
       "protocol": "shadowsocks",
-      "settings": { "clients": [{ "method": "aes-128-gcm", "password": "$UUID" }], "network": "tcp,udp" },
-      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } }
+      "settings": { "clients": [{"method": "aes-128-gcm","password": "$uuid"}] },
+      "streamSettings": { "network": "grpc", "grpcSettings": { "serviceName": "ss-grpc" } },
+      "tag": "ss-grpc"
     }
   ],
   "outbounds": [
     { "protocol": "freedom" },
     { "protocol": "blackhole", "tag": "blocked" }
-  ],
-  "routing": { "rules": [] }
+  ]
 }
 EOF
 
@@ -340,35 +347,53 @@ echo -e "[${green}INFO${nc}] Configuring Nginx..."
 cat > /etc/nginx/conf.d/xray.conf <<EOF
 server {
     listen 80;
-    listen [::]:80;
+    server_name $domain *.$domain;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
     server_name $domain *.$domain;
 
+    ssl_certificate /etc/letsencrypt/live/xray-49444.givps.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/xray-49444.givps.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # VLESS WS
     location /vless {
-        proxy_pass http://127.0.0.1:30001;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:10001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
+    # VMess WS
     location /vmess {
-        proxy_pass http://127.0.0.1:30002;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:10002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
+    # Trojan WS
     location /trojan {
-        proxy_pass http://127.0.0.1:30003;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:10003;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
     }
 
+    # Shadowsocks WS
     location /ssws {
-        proxy_pass http://127.0.0.1:30004;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:10004;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -377,16 +402,16 @@ server {
 
     # gRPC
     location /vless-grpc {
-        grpc_pass grpc://127.0.0.1:30011;
+        grpc_pass grpc://127.0.0.1:10005;
     }
     location /vmess-grpc {
-        grpc_pass grpc://127.0.0.1:30012;
+        grpc_pass grpc://127.0.0.1:10006;
     }
     location /trojan-grpc {
-        grpc_pass grpc://127.0.0.1:30013;
+        grpc_pass grpc://127.0.0.1:10007;
     }
     location /ss-grpc {
-        grpc_pass grpc://127.0.0.1:30014;
+        grpc_pass grpc://127.0.0.1:10008;
     }
 }
 EOF
