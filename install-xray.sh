@@ -35,19 +35,19 @@ fi
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 clear
-echo -e "${green}Starting ACME.sh installation with Cloudflare DNS API...{nc}"
+echo -e "${green}Starting ACME.sh installation with Cloudflare DNS API...${nc}"
 
 # ------------------------------------------
 # Check domain
 # ------------------------------------------
 if [[ ! -f /etc/xray/domain ]]; then
-    echo -e "${red}[ERROR]{nc} File /etc/xray/domain not found!"
+    echo -e "${red}[ERROR]${nc} File /etc/xray/domain not found!"
     exit 1
 fi
 
 domain=$(cat /etc/xray/domain)
 if [[ -z "$domain" ]]; then
-    echo -e "${red}[ERROR]{nc} Domain is empty in /etc/xray/domain!"
+    echo -e "${red}[ERROR]${nc} Domain is empty in /etc/xray/domain!"
     exit 1
 fi
 
@@ -55,13 +55,13 @@ fi
 # Cloudflare Token (default + manual input)
 # ------------------------------------------
 DEFAULT_CF_TOKEN="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
-echo -e "${blue}Cloudflare API Token Setup:{nc}"
+echo -e "${blue}Cloudflare API Token Setup:${nc}"
 read -rp "Enter Cloudflare API Token (press ENTER to use default token): " CF_Token
 if [[ -z "$CF_Token" ]]; then
     CF_Token="$DEFAULT_CF_TOKEN"
-    echo -e "${green}[INFO]{nc} Using default Cloudflare API Token."
+    echo -e "${green}[INFO]${nc} Using default Cloudflare API Token."
 else
-    echo -e "${green}[INFO]{nc} Using manually entered Cloudflare API Token."
+    echo -e "${green}[INFO]${nc} Using manually entered Cloudflare API Token."
 fi
 export CF_Token
 
@@ -69,7 +69,7 @@ export CF_Token
 # ------------------------------------------
 # Install dependencies
 # ------------------------------------------
-echo -e "${blue}Installing dependencies...{nc}"
+echo -e "${blue}Installing dependencies...${nc}"
 apt update -y >/dev/null 2>&1
 command -v curl >/dev/null 2>&1 || apt install -y curl >/dev/null 2>&1
 command -v jq >/dev/null 2>&1 || apt install -y jq >/dev/null 2>&1
@@ -85,10 +85,10 @@ retry() {
             return 0
         fi
         COUNT=$((COUNT + 1))
-        echo -e "${yellow}Command failed. Retry $COUNT/$MAX_RETRY...{nc}"
+        echo -e "${yellow}Command failed. Retry $COUNT/$MAX_RETRY...${nc}"
         sleep 3
     done
-    echo -e "${red}Command failed after $MAX_RETRY retries.{nc}"
+    echo -e "${red}Command failed after $MAX_RETRY retries.${nc}"
     exit 1
 }
 
@@ -98,7 +98,7 @@ retry() {
 ACME_HOME="$HOME/.acme.sh"
 cd "$HOME"
 if [[ ! -d "$ACME_HOME" ]]; then
-    echo -e "${green}Installing acme.sh...{nc}"
+    echo -e "${green}Installing acme.sh...${nc}"
     wget -q -O acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
     bash acme.sh --install
     rm -f acme.sh
@@ -110,7 +110,7 @@ cd "$ACME_HOME"
 # ------------------------------------------
 mkdir -p "$ACME_HOME/dnsapi"
 if [[ ! -f "$ACME_HOME/dnsapi/dns_cf.sh" ]]; then
-    echo -e "${green}Installing Cloudflare DNS API hook...{nc}"
+    echo -e "${green}Installing Cloudflare DNS API hook...${nc}"
     wget -O "$ACME_HOME/dnsapi/dns_cf.sh" https://raw.githubusercontent.com/acmesh-official/acme.sh/master/dnsapi/dns_cf.sh
     chmod +x "$ACME_HOME/dnsapi/dns_cf.sh"
 fi
@@ -118,19 +118,19 @@ fi
 # ------------------------------------------
 # Register Let's Encrypt account
 # ------------------------------------------
-echo -e "${green}Registering ACME account with Let's Encrypt...{nc}"
+echo -e "${green}Registering ACME account with Let's Encrypt...${nc}"
 retry bash acme.sh --register-account -m ssl@givps.com --server letsencrypt
 
 # ------------------------------------------
 # Issue wildcard certificate
 # ------------------------------------------
-echo -e "${blue}Issuing wildcard certificate for $domain ...{nc}"
+echo -e "${blue}Issuing wildcard certificate for $domain ...${nc}"
 retry bash acme.sh --issue --dns dns_cf -d "$domain" -d "*.$domain" --force --server letsencrypt
 
 # ------------------------------------------
 # Install certificate to /etc/xray
 # ------------------------------------------
-echo -e "${blue}Installing certificate...{nc}"
+echo -e "${blue}Installing certificate...${nc}"
 mkdir -p /etc/xray
 retry bash acme.sh --installcert -d "$domain" \
     --fullchainpath /etc/xray/xray.crt \
@@ -142,7 +142,7 @@ chmod 600 /etc/xray/xray.key
 # ------------------------------------------
 # Cron auto renew + log rotate
 # ------------------------------------------
-echo -e "${blue}Adding cron job for auto renew...{nc}"
+echo -e "${blue}Adding cron job for auto renew...${nc}"
 CRON_FILE="/etc/cron.d/acme-renew"
 cat > "$CRON_FILE" <<EOF
 # Auto renew ACME.sh every 2 months
@@ -162,12 +162,12 @@ EOF
 chmod 644 "$CRON_FILE"
 systemctl restart cron
 
-echo -e "${green}✅ ACME.sh Cloudflare setup completed successfully.{nc}"
+echo -e "${green}✅ ACME.sh Cloudflare setup completed successfully.${nc}"
 echo -e "Certificate: /etc/xray/xray.crt"
 echo -e "Key        : /etc/xray/xray.key"
 
-echo -e "${green}XRAY Core Installer{nc}"
-echo -e "${yellow}Progress...{nc}"
+echo -e "${green}XRAY Core Installer${nc}"
+echo -e "${yellow}Progress...${nc}"
 
 domain=$(cat /etc/xray/domain)
 
