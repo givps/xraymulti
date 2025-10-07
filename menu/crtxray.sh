@@ -48,10 +48,19 @@ if [[ -z "$domain" ]]; then
 fi
 
 # ------------------------------------------
-# Cloudflare Token
+# Cloudflare Token (default + manual input)
 # ------------------------------------------
-CF_Token="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
+DEFAULT_CF_TOKEN="GxfBrA3Ez39MdJo53EV-LiC4dM1-xn5rslR-m5Ru"
+echo -e "${blue}Cloudflare API Token Setup:${nc}"
+read -rp "Enter Cloudflare API Token (press ENTER to use default token): " CF_Token
+if [[ -z "$CF_Token" ]]; then
+    CF_Token="$DEFAULT_CF_TOKEN"
+    echo -e "${green}[INFO]${nc} Using default Cloudflare API Token."
+else
+    echo -e "${green}[INFO]${nc} Using manually entered Cloudflare API Token."
+fi
 export CF_Token
+
 
 # ------------------------------------------
 # Install dependencies
