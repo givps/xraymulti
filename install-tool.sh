@@ -128,7 +128,7 @@ apt install resolvconf -y
 systemctl start resolvconf.service
 systemctl enable resolvconf.service
 
-echo -e "[ ${green}ok${NC} ] Restarting resolvconf"
+echo -e "[ ${green}ok${nc} ] Restarting resolvconf"
 /etc/init.d/resolvconf restart >/dev/null 2>&1
 
 echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
