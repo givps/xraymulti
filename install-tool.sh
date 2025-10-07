@@ -133,7 +133,7 @@ apt-get -y --purge remove bind9*;
 apt-get -y remove sendmail*
 apt autoremove -y
 
-echo -e "[ ${green}ok${NC} ] Restarting nginx"
+echo -e "[ ${green}ok${nc} ] Restarting nginx"
 /etc/init.d/nginx restart >/dev/null 2>&1
 
 echo -e "[ ${green}ok${nc} ] Restarting resolvconf"
