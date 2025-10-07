@@ -371,106 +371,122 @@ EOF
 echo -e "[${green}INFO${nc}] Configuring Nginx..."
 
 cat > /etc/nginx/conf.d/xray.conf <<EOF
-# Redirect HTTP to HTTPS
+# /etc/nginx/conf.d/xray.conf
 server {
     listen 80;
-    listen [::]:80;
     server_name $domain *.$domain;
-
-    return 301 https://\$host\$request_uri;
+    
+    # Redirect all HTTP to HTTPS
+    return 301 https://$host$request_uri;
 }
 
-# HTTPS server block
 server {
     listen 443 ssl http2;
-    listen [::]:443 ssl http2;
     server_name $domain *.$domain;
-
-    root /home/vps/public_html;
-    index index.html index.htm;
 
     ssl_certificate /etc/xray/xray.crt;
     ssl_certificate_key /etc/xray/xray.key;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
-    ssl_prefer_server_ciphers on;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 
-    # -------------------
-    # WebSocket paths
-    # -------------------
-    location = /vless {
+    # --------------------
+    # VLESS WS
+    # --------------------
+    location /vless {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location = /vmess {
+    # --------------------
+    # VLESS gRPC
+    # --------------------
+    location /vless-grpc {
+        grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
+    }
+
+    # --------------------
+    # VMess WS
+    # --------------------
+    location /vmess {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/vmess_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location = /trojan {
+    # --------------------
+    # VMess gRPC
+    # --------------------
+    location /vmess-grpc {
+        grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
+    }
+
+    # --------------------
+    # Trojan WS
+    # --------------------
+    location /trojan {
         proxy_redirect off;
         proxy_pass http://unix:/run/xray/trojan_ws.sock;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location = /ssws {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:30300;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    # -------------------
-    # gRPC paths
-    # -------------------
-    location ^~ /vless-grpc {
-        grpc_set_header X-Real-IP \$remote_addr;
-        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        grpc_set_header Host \$http_host;
-        grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
-    }
-
-    location ^~ /vmess-grpc {
-        grpc_set_header X-Real-IP \$remote_addr;
-        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        grpc_set_header Host \$http_host;
-        grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
-    }
-
-    location ^~ /trojan-grpc {
-        grpc_set_header X-Real-IP \$remote_addr;
-        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        grpc_set_header Host \$http_host;
+    # --------------------
+    # Trojan gRPC
+    # --------------------
+    location /trojan-grpc {
         grpc_pass grpc://unix:/run/xray/trojan_grpc.sock;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
     }
 
-    location ^~ /ss-grpc {
-        grpc_set_header X-Real-IP \$remote_addr;
-        grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        grpc_set_header Host \$http_host;
-        grpc_pass grpc://127.0.0.1:30310;
+    # --------------------
+    # Shadowsocks WS
+    # --------------------
+    location /ssws {
+        proxy_redirect off;
+        proxy_pass http://unix:/run/xray/ss_ws.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # --------------------
+    # Shadowsocks gRPC
+    # --------------------
+    location /ss-grpc {
+        grpc_pass grpc://unix:/run/xray/ss_grpc.sock;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        grpc_set_header Host $host;
     }
 }
 EOF
