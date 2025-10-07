@@ -1,134 +1,167 @@
 #!/bin/bash
+# ==========================================
+# XRAY Multi-Protocol User + Auto Nginx Config
+# ==========================================
 set -euo pipefail
 
-# -------------------------
+# ----------------------
 # Colors
-# -------------------------
+# ----------------------
 red='\e[1;31m'; green='\e[0;32m'; yellow='\e[1;33m'; blue='\e[1;34m'; nc='\e[0m'
 
-# -------------------------
-# Paths & defaults
-# -------------------------
+# ----------------------
+# Paths
+# ----------------------
+CONFIG_FILE="/etc/xray/config.json"
 PUBLIC_HTML="/home/vps/public_html"
+LOG="/etc/log-create-user.log"
+NGINX_CONF="/etc/nginx/conf.d/xray.conf"
+
 mkdir -p "$PUBLIC_HTML"
+touch "$LOG"
 
+# ----------------------
+# Domain
+# ----------------------
+MYIP=$(curl -s ifconfig.me || echo "127.0.0.1")
+DOMAIN=$(cat /etc/xray/domain 2>/dev/null || echo "$MYIP")
 BUG="bug.com"
-TLS_PORT=443
-GRPC_PORT=443
-SS_CIPHER="aes-128-gcm"
 
-# -------------------------
-# External IP & domain
-# -------------------------
-domain=$(cat /etc/xray/domain 2>/dev/null || echo "127.0.0.1")
-
-# -------------------------
-# Prompt username
-# -------------------------
+# ----------------------
+# Prompt user
+# ----------------------
 while true; do
-    read -rp "Username: " user
-    user="${user// /}"
-    if [[ ! $user =~ ^[a-zA-Z0-9_]+$ ]]; then
-        echo -e "${red}Invalid username.${nc} Only letters, numbers, underscore."
-        continue
-    fi
-    # Check if user already exists
-    if [[ -f "$PUBLIC_HTML/vless-${user}.txt" ]]; then
-        echo -e "${red}User already exists.${nc} Choose another."
-        continue
-    fi
+    read -rp "Username: " USER
+    USER="${USER// /}"
+    [[ ! $USER =~ ^[a-zA-Z0-9_]+$ ]] && echo -e "${red}Invalid username${nc}" && continue
     break
 done
 
-# -------------------------
-# Expiry & UUID
-# -------------------------
-read -rp "Expired (days): " expired
-if ! [[ "$expired" =~ ^[0-9]+$ ]]; then
-    echo -e "${red}Invalid number of days.${nc}"
-    exit 1
-fi
-exp=$(date -d "$expired days" +"%Y-%m-%d")
-uuid=$(cat /proc/sys/kernel/random/uuid)
+read -rp "Expired (days): " EXPIRED
+[[ ! "$EXPIRED" =~ ^[0-9]+$ ]] && echo -e "${red}Invalid number of days${nc}" && exit 1
+EXP_DATE=$(date -d "$EXPIRED days" +"%Y-%m-%d")
 
-# -------------------------
-# Build links
-# -------------------------
-vless_ws="vless://${uuid}@${domain}:${TLS_PORT}?path=/vless&security=tls&encryption=none&type=ws#${user}"
-vless_grpc="vless://${uuid}@${domain}:${GRPC_PORT}?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=${BUG}#${user}"
+# ----------------------
+# UUID/Password
+# ----------------------
+UUID=$(cat /proc/sys/kernel/random/uuid)
+SS_CIPHER="aes-128-gcm"
 
-vmess_ws=$(echo -n "{\"v\":\"2\",\"ps\":\"$user\",\"add\":\"$domain\",\"port\":$TLS_PORT,\"id\":\"$uuid\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"/vmess\"}" | base64 -w0)
-vmess_grpc=$(echo -n "{\"v\":\"2\",\"ps\":\"$user\",\"add\":\"$domain\",\"port\":$GRPC_PORT,\"id\":\"$uuid\",\"aid\":\"0\",\"net\":\"grpc\",\"type\":\"none\",\"host\":\"\",\"path\":\"\",\"serviceName\":\"vmess-grpc\"}" | base64 -w0)
+# ----------------------
+# Function add client
+# ----------------------
+add_client() {
+    PROTO="$1"
+    case "$PROTO" in
+        trojan|trojangrpc)
+            echo "{\"password\":\"$UUID\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
+            ;;
+        vless|vmess)
+            echo "{\"id\":\"$UUID\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
+            ;;
+        ssws|ssgrpc)
+            echo "{\"password\":\"$UUID\",\"method\":\"$SS_CIPHER\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
+            ;;
+    esac
+}
 
-trojan_ws="trojan://${uuid}@${domain}:${TLS_PORT}?path=/trojan&security=tls&host=${BUG}&type=ws&sni=${BUG}#${user}"
-trojan_grpc="trojan://${uuid}@${domain}:${GRPC_PORT}?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=${BUG}#${user}"
+# ----------------------
+# Add user to all protocols
+# ----------------------
+for proto in trojan trojangrpc vless vmess ssws ssgrpc; do
+    add_client "$proto"
+done
 
-ss_b64=$(echo -n "$SS_CIPHER:$uuid" | base64 -w0)
-ss_ws="ss://${ss_b64}@${domain}:${TLS_PORT}?plugin=xray-plugin;mux=0;path=/ssws;host=${domain};tls#${user}"
-ss_grpc="ss://${ss_b64}@${domain}:${TLS_PORT}?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=${domain};tls#${user}"
+# ----------------------
+# Generate Nginx config
+# ----------------------
+cat > "$NGINX_CONF" <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
 
-# -------------------------
-# Generate JSON configs
-# -------------------------
-cat > "${PUBLIC_HTML}/ss-ws-${user}.json" <<EOF
-{
-  "server":"$domain",
-  "server_port":$TLS_PORT,
-  "password":"$uuid",
-  "method":"$SS_CIPHER",
-  "plugin":"xray-plugin",
-  "plugin_opts":"path=/ssws;host=$domain;tls",
-  "name":"$user"
+server {
+    listen 443 ssl http2;
+    server_name $DOMAIN;
+
+    ssl_certificate /etc/xray/xray.crt;
+    ssl_certificate_key /etc/xray/xray.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location /vless { proxy_pass http://unix:/run/xray/vless_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location /vless-grpc { grpc_pass grpc://unix:/run/xray/vless_grpc.sock; grpc_set_header Host \$host; }
+    location /vmess { proxy_pass http://unix:/run/xray/vmess_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location /vmess-grpc { grpc_pass grpc://unix:/run/xray/vmess_grpc.sock; grpc_set_header Host \$host; }
+    location /trojan { proxy_pass http://unix:/run/xray/trojan_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location /trojan-grpc { grpc_pass grpc://unix:/run/xray/trojan_grpc.sock; grpc_set_header Host \$host; }
+    location /ssws { proxy_pass http://unix:/run/xray/ss_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location /ss-grpc { grpc_pass grpc://unix:/run/xray/ss_grpc.sock; grpc_set_header Host \$host; }
 }
 EOF
 
-cat > "${PUBLIC_HTML}/ss-grpc-${user}.json" <<EOF
+nginx -t && systemctl restart nginx
+systemctl restart xray
+
+# ----------------------
+# Generate quick-links
+# ----------------------
+VLESS_WS="vless://$UUID@$DOMAIN:443?path=/vless&security=tls&encryption=none&type=ws#$USER"
+VLESS_GRPC="vless://$UUID@$DOMAIN:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=$BUG#$USER"
+
+VMESS_WS=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":443,\"id\":\"$UUID\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"/vmess\"}" | base64 -w0)
+VMESS_GRPC=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":443,\"id\":\"$UUID\",\"aid\":\"0\",\"net\":\"grpc\",\"type\":\"none\",\"host\":\"\",\"path\":\"\",\"serviceName\":\"vmess-grpc\"}" | base64 -w0)
+
+TROJAN_WS="trojan://$UUID@$DOMAIN:443?path=/trojan&security=tls&host=$BUG&type=ws&sni=$BUG#$USER"
+TROJAN_GRPC="trojan://$UUID@$DOMAIN:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=$BUG#$USER"
+
+SS_B64=$(echo -n "$SS_CIPHER:$UUID" | base64 -w0)
+SS_WS="ss://$SS_B64@$DOMAIN:443?plugin=xray-plugin;mux=0;path=/ssws;host=$DOMAIN;tls#$USER"
+SS_GRPC="ss://$SS_B64@$DOMAIN:443?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=$DOMAIN;tls#$USER"
+
+# ----------------------
+# Save to HTML folder
+# ----------------------
+for proto in vless vmess trojan ss; do
+  case "$proto" in
+    vless) echo -e "$VLESS_WS\n$VLESS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
+    vmess) echo -e "$VMESS_WS\n$VMESS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
+    trojan) echo -e "$TROJAN_WS\n$TROJAN_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
+    ss) echo -e "$SS_WS\n$SS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
+  esac
+done
+
+chmod 644 "$PUBLIC_HTML"/*.txt
+
+# ----------------------
+# Log & output
+# ----------------------
 {
-  "server":"$domain",
-  "server_port":$TLS_PORT,
-  "password":"$uuid",
-  "method":"$SS_CIPHER",
-  "plugin":"xray-plugin",
-  "plugin_opts":"serviceName=ss-grpc;host=$domain;tls",
-  "name":"$user"
-}
-EOF
+echo -e "${red}=========================================${nc}"
+echo -e "${blue}           XRAY USER CREATED ${nc}"
+echo -e "${red}=========================================${nc}"
+echo "User: $USER"
+echo "UUID/Password: $UUID"
+echo "Expired: $EXP_DATE"
+echo -e "${red}=========================================${nc}"
+echo "VLESS WS: $VLESS_WS"
+echo -e "${red}=========================================${nc}"
+echo "VLESS gRPC: $VLESS_GRPC"
+echo -e "${red}=========================================${nc}"
+echo "VMess WS: $VMESS_WS"
+echo -e "${red}=========================================${nc}"
+echo "VMess gRPC: $VMESS_GRPC"
+echo -e "${red}=========================================${nc}"
+echo "Trojan WS: $TROJAN_WS"
+echo -e "${red}=========================================${nc}"
+echo "Trojan gRPC: $TROJAN_GRPC"
+echo -e "${red}=========================================${nc}"
+echo "Shadowsocks WS: $SS_WS"
+echo -e "${red}=========================================${nc}"
+echo "Shadowsocks gRPC: $SS_GRPC"
+echo -e "${red}=========================================${nc}"
+} | tee -a "$LOG"
 
-# -------------------------
-# Save quick-links per protocol
-# -------------------------
-echo -e "$vless_ws\n$vless_grpc" > "${PUBLIC_HTML}/vless-${user}.txt"
-echo -e "$vmess_ws\n$vmess_grpc" > "${PUBLIC_HTML}/vmess-${user}.txt"
-echo -e "$trojan_ws\n$trojan_grpc" > "${PUBLIC_HTML}/trojan-${user}.txt"
-echo -e "$ss_ws\n$ss_grpc" > "${PUBLIC_HTML}/ss-${user}.txt"
-
-chmod 644 "${PUBLIC_HTML}"/*.json "${PUBLIC_HTML}"/*.txt
-
-# -------------------------
-# Show summary
-# -------------------------
-echo -e "${red}=========================================${nc}"
-echo -e "${blue}            XRAY ACCOUNT  ${nc}"
-echo -e "${red}=========================================${nc}"
-echo "XRAY User Created: $user"
-echo "UUID/Password: $uuid"
-echo "Expired: $exp"
-echo -e "${red}=========================================${nc}"
-echo "VLESS WS: $vless_ws"
-echo -e "${red}=========================================${nc}"
-echo "VLESS gRPC: $vless_grpc"
-echo -e "${red}=========================================${nc}"
-echo "VMess WS: $vmess_ws"
-echo -e "${red}=========================================${nc}"
-echo "VMess gRPC: $vmess_grpc"
-echo -e "${red}=========================================${nc}"
-echo "Trojan WS: $trojan_ws"
-echo -e "${red}=========================================${nc}"
-echo "Trojan gRPC: $trojan_grpc"
-echo -e "${red}=========================================${nc}"
-echo "Shadowsocks WS: $ss_ws"
-echo -e "${red}=========================================${nc}"
-echo "Shadowsocks gRPC: $ss_grpc"
-echo -e "${red}=========================================${nc}"
-
-read -n1 -s -r -p "Press any key to return to menu..."
+echo -e "\nDone. Configs saved in $PUBLIC_HTML"
