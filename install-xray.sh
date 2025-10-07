@@ -56,10 +56,6 @@ echo -e "[ ${green}INFO${nc} ] Generating Xray config..."
 
 uuid=$(cat /proc/sys/kernel/random/uuid)
 
-# Tulis config
-#!/bin/bash
-uuid=$(cat /proc/sys/kernel/random/uuid)
-
 cat > /etc/xray/config.json <<EOF
 {
   "log": {
