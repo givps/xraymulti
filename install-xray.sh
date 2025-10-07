@@ -174,7 +174,7 @@ domain=$(cat /etc/xray/domain)
 # -------------------------------
 # Install dependencies
 # -------------------------------
-echo -e "[${green}INFO{nc}] Installing dependencies..."
+echo -e "[${green}INFO${nc}] Installing dependencies..."
 apt update -y
 apt install -y curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
 cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables iptables-persistent jq nginx
@@ -182,7 +182,7 @@ cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables iptables-p
 # -------------------------------
 # Timezone & sync
 # -------------------------------
-echo -e "[${green}INFO{nc}] Setting timezone & syncing time..."
+echo -e "[${green}INFO${nc}] Setting timezone & syncing time..."
 timedatectl set-timezone Asia/Jakarta
 timedatectl set-ntp true
 systemctl enable chrony --now
@@ -191,7 +191,7 @@ chronyc -a makestep
 # -------------------------------
 # Prepare directories
 # -------------------------------
-echo -e "[${green}INFO{nc}] Preparing directories..."
+echo -e "[${green}INFO${nc}] Preparing directories..."
 install -d -m 755 -o www-data -g www-data /run/xray /var/log/xray /etc/xray
 touch /var/log/xray/{access.log,error.log,access2.log,error2.log}
 chmod 644 /var/log/xray/*.log
@@ -199,13 +199,13 @@ chmod 644 /var/log/xray/*.log
 # -------------------------------
 # Install Xray
 # -------------------------------
-echo -e "[${green}INFO{nc}] Installing Xray core..."
+echo -e "[${green}INFO${nc}] Installing Xray core..."
 bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 1.5.6
 
 # -------------------------------
 # Create Xray config
 # -------------------------------
-echo -e "[${green}INFO{nc}] Generating Xray config..."
+echo -e "[${green}INFO${nc}] Generating Xray config..."
 uuid=$(cat /proc/sys/kernel/random/uuid)
 
 cat >/etc/xray/config.json <<EOF
@@ -324,7 +324,7 @@ EOF
 # -------------------------------
 # Create systemd services
 # -------------------------------
-echo -e "[${green}INFO{nc}] Creating systemd services..."
+echo -e "[${green}INFO${nc}] Creating systemd services..."
 
 cat > /etc/systemd/system/xray.service << 'EOF'
 [Unit]
@@ -368,7 +368,7 @@ EOF
 # -------------------------------
 # Create Nginx config with wildcard SSL
 # -------------------------------
-echo -e "[${green}INFO{nc}] Configuring Nginx..."
+echo -e "[${green}INFO${nc}] Configuring Nginx..."
 
 cat > /etc/nginx/conf.d/xray.conf <<EOF
 # Redirect HTTP to HTTPS
@@ -478,17 +478,17 @@ EOF
 # -------------------------------
 # Enable & start services
 # -------------------------------
-echo -e "[${yellow}SERVICE{nc}] Reloading systemd daemon..."
+echo -e "[${yellow}SERVICE${nc}] Reloading systemd daemon..."
 systemctl daemon-reload
 systemctl enable runn.service
 systemctl restart runn.service
 systemctl enable xray.service
 systemctl restart xray.service
 
-echo -e "[${green}INFO{nc}] Enabling and restarting Nginx..."
+echo -e "[${green}INFO${nc}] Enabling and restarting Nginx..."
 nginx -t
 systemctl enable nginx
 systemctl restart nginx
 
-echo -e "${yellow}✅ Xray (Vless, Vmess, Trojan WS, SS) & Nginx wildcard SSL are running{nc}"
+echo -e "${yellow}✅ Xray (Vless, Vmess, Trojan WS, SS) & Nginx wildcard SSL are running${nc}"
 
