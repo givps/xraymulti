@@ -283,41 +283,20 @@ WantedBy=multi-user.target
 EOF
 
 cat >/etc/nginx/conf.d/xray.conf <<EOF
+# Redirect HTTP → HTTPS
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name $domain;
+    listen 80;
+    listen [::]:80;
+    server_name _;
     return 301 https://$host$request_uri;
 }
 
-upstream xray_vless_ws {
-    server unix:/run/xray/vless_ws.sock;
-}
-
-upstream xray_vmess_ws {
-    server unix:/run/xray/vmess_ws.sock;
-}
-
-upstream xray_trojan_ws {
-    server unix:/run/xray/trojan_ws.sock;
-}
-
-upstream xray_vless_grpc {
-    server unix:/run/xray/vless_grpc.sock;
-}
-
-upstream xray_vmess_grpc {
-    server unix:/run/xray/vmess_grpc.sock;
-}
-
-upstream xray_trojan_grpc {
-    server unix:/run/xray/trojan_grpc.sock;
-}
-
+# HTTPS server with wildcard
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $domain;
+    listen 443 ssl http2 reuseport;
+    listen [::]:443 ssl http2 reuseport;
+    server_name *.$domain;
+
     root /home/vps/public_html;
     index index.html index.htm;
 
@@ -326,64 +305,83 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
     ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    server_tokens off;
 
-    proxy_buffering off;
-    proxy_read_timeout 120s;
-    proxy_send_timeout 120s;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Host $http_host;
-
+    # -----------------------
+    # WebSocket Locations
+    # -----------------------
     location = /vless {
-        proxy_pass http://xray_vless_ws;
+        proxy_redirect off;
+        proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
     }
 
     location = /vmess {
-        proxy_pass http://xray_vmess_ws;
+        proxy_redirect off;
+        proxy_pass http://unix:/run/xray/vmess_ws.sock;
         proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
     }
 
     location = /trojan {
-        proxy_pass http://xray_trojan_ws;
+        proxy_redirect off;
+        proxy_pass http://unix:/run/xray/trojan_ws.sock;
         proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
     }
 
     location = /ssws {
+        proxy_redirect off;
         proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
     }
 
-    # gRPC locations using upstreams
+    # -----------------------
+    # gRPC Locations
+    # -----------------------
     location ^~ /vless-grpc {
-        grpc_pass grpc://xray_vless_grpc;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $http_host;
+        grpc_pass grpc://unix:/run/xray/vless_grpc.sock;
     }
 
     location ^~ /vmess-grpc {
-        grpc_pass grpc://xray_vmess_grpc;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $http_host;
+        grpc_pass grpc://unix:/run/xray/vmess_grpc.sock;
     }
 
     location ^~ /trojan-grpc {
-        grpc_pass grpc://xray_trojan_grpc;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $http_host;
+        grpc_pass grpc://unix:/run/xray/trojan_grpc.sock;
     }
 
     location ^~ /ss-grpc {
-        grpc_pass grpc://127.0.0.1:30310;
+        grpc_set_header X-Real-IP $remote_addr;
+        grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         grpc_set_header Host $http_host;
+        grpc_pass grpc://127.0.0.1:30310;
     }
 }
 EOF
