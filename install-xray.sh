@@ -179,7 +179,8 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
-
+#nginx config
+cat >/etc/nginx/conf.d/xray.conf <<EOF
 # Redirect HTTP to HTTPS
 server {
     listen 80;
