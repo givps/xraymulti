@@ -375,14 +375,14 @@ cat > /etc/nginx/conf.d/xray.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
-    server_name xray-49444.givps.com;
+    server_name $domain *.$domain;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name xray-49444.givps.com;
+    server_name $domain *.$domain;
 
     ssl_certificate /etc/xray/xray.crt;
     ssl_certificate_key /etc/xray/xray.key;
