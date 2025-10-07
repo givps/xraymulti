@@ -183,65 +183,19 @@ EOF
 # -------------------------------
 echo -e "[${GREEN}INFO${NC}] Configuring Nginx..."
 cat >/etc/nginx/conf.d/xray.conf <<EOF
-# -----------------------------
-# HTTP (Non-TLS)
-# -----------------------------
+# Redirect HTTP to HTTPS
 server {
     listen 80;
     listen [::]:80;
     server_name $domain *.$domain;
-
-    root /home/vps/public_html;
-    index index.html index.htm;
-
-    # WebSocket (non-TLS)
-    location = /vless {
-        proxy_pass http://unix:/run/xray/vless_ws.sock;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    location = /vmess {
-        proxy_pass http://unix:/run/xray/vmess_ws.sock;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    location = /trojan {
-        proxy_pass http://unix:/run/xray/trojan_ws.sock;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    location = /ssws {
-        proxy_pass http://127.0.0.1:30300;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
+    return 301 https://\$host\$request_uri;
 }
 
-# -----------------------------
-# HTTPS (TLS)
-# -----------------------------
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2;
+
     server_name $domain *.$domain;
 
     root /home/vps/public_html;
@@ -253,8 +207,11 @@ server {
     ssl_ciphers EECDH+CHACHA20:EECDH+AES128:EECDH+AES256:!MD5;
     ssl_prefer_server_ciphers on;
 
-    # WebSocket (TLS)
+    # -------------------
+    # WebSocket paths
+    # -------------------
     location = /vless {
+        proxy_redirect off;
         proxy_pass http://unix:/run/xray/vless_ws.sock;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -265,6 +222,7 @@ server {
     }
 
     location = /vmess {
+        proxy_redirect off;
         proxy_pass http://unix:/run/xray/vmess_ws.sock;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -275,6 +233,7 @@ server {
     }
 
     location = /trojan {
+        proxy_redirect off;
         proxy_pass http://unix:/run/xray/trojan_ws.sock;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -285,6 +244,7 @@ server {
     }
 
     location = /ssws {
+        proxy_redirect off;
         proxy_pass http://127.0.0.1:30300;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -294,7 +254,9 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
-    # gRPC (TLS)
+    # -------------------
+    # gRPC paths
+    # -------------------
     location ^~ /vless-grpc {
         grpc_set_header X-Real-IP \$remote_addr;
         grpc_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
