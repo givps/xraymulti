@@ -3,7 +3,6 @@
 # hapus
 cd /usr/bin
 rm -f menu
-rm -f menu
 rm -f create
 rm -f delete
 rm -f crtxray
@@ -18,7 +17,7 @@ cd /usr/bin
 wget -O menu "https://raw.githubusercontent.com/givps/xraymulti/master/menu/menu.sh"
 wget -O create "https://raw.githubusercontent.com/givps/xraymulti/master/menu/create.sh"
 wget -O delete "https://raw.githubusercontent.com/givps/xraymulti/master/menu/delete.sh"
-wget -O crtxray "https://raw.githubusercontent.com/givps/xraymulti/master/xray/crtxray.sh"
+wget -O crtxray "https://raw.githubusercontent.com/givps/xraymulti/master/menu/crtxray.sh"
 wget -O restart-xray "https://raw.githubusercontent.com/givps/xraymulti/master/menu/restart-xray.sh"
 wget -O change-domain "https://raw.githubusercontent.com/givps/xraymulti/master/menu/change-domain.sh"
 wget -O auto-delete "https://raw.githubusercontent.com/givps/xraymulti/master/menu/auto-delete.sh"
