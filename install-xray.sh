@@ -180,11 +180,17 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-cat > /etc/nginx/conf.d/xray.conf << 'EOF'
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $domain *.$domain;
+    return 301 https://$host$request_uri;
+}
 
 server {
-    listen 443 ssl http2 reuseport;
-    listen [::]:443 ssl http2 reuseport;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name $domain *.$domain;
 
     root /home/vps/public_html;
@@ -197,7 +203,7 @@ server {
     ssl_prefer_server_ciphers on;
 
     # -------------------
-    # WebSocket locations
+    # WebSocket paths
     # -------------------
     location = /vless {
         proxy_redirect off;
@@ -244,7 +250,7 @@ server {
     }
 
     # -------------------
-    # gRPC locations
+    # gRPC paths
     # -------------------
     location ^~ /vless-grpc {
         grpc_set_header X-Real-IP $remote_addr;
