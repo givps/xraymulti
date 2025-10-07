@@ -294,6 +294,26 @@ echo -e "[ ${green}INFO${nc} ] Enabling and starting runn.service..."
 systemctl enable runn.service >/dev/null 2>&1
 systemctl restart runn.service
 
+# enable xray vmess ws tls
+echo -e "[ ${green}OK${NC} ] Restarting Vmess WS"
+systemctl enable xray.service
+systemctl start xray.service
+systemctl restart xray.service
+
+# enable xray vless ws tls
+echo -e "[ ${green}OK${NC} ] Restarting Vless WS"
+systemctl daemon-reload
+systemctl enable xray@vless.service
+systemctl start xray@vless.service
+systemctl restart xray@vless.service
+
+# enable xray trojan ws tls
+echo -e "[ ${green}OK${NC} ] Restarting Trojan WS"
+systemctl daemon-reload
+systemctl enable xray@trojanws.service
+systemctl start xray@trojanws.service
+systemctl restart xray@trojanws.service
+
 # Jalankan Xray setelah runn siap
 echo -e "[ ${green}INFO${nc} ] Enabling and starting Xray..."
 systemctl enable xray.service >/dev/null 2>&1
@@ -301,6 +321,7 @@ systemctl restart xray.service
 
 # Reload dan restart nginx terakhir
 echo -e "[ ${green}INFO${nc} ] Reloading and restarting Nginx..."
+systemctl daemon-reload
 systemctl enable nginx
 systemctl start nginx
 systemctl restart nginx
