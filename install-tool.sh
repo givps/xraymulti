@@ -18,7 +18,7 @@ blue='\e[1;34m'
 nc='\e[0m'
 
 # --- Get VPS public IP ---
-MYIP=$(curl -s ipv4.icanhazip.com)
+MYIP=$(wget -qO- ipv4.icanhazip.com || curl -sS ifconfig.me)
 echo -e "${green}[INFO] VPS Public IP: $MYIP${nc}"
 
 # --- Link Hosting ---
@@ -41,36 +41,24 @@ WantedBy=multi-user.target
 END
 
 # --- Create rc.local ---
+# nano /etc/rc.local
 cat > /etc/rc.local <<-END
 #!/bin/sh -e
-# rc.local script
-
-# --- Start BadVPN UDPGW if installed ---
-if command -v badvpn-udpgw &>/dev/null; then
-    screen -dmS badvpn7100 badvpn-udpgw --listen-addr 127.0.0.1:7100 --max-clients 100
-    screen -dmS badvpn7200 badvpn-udpgw --listen-addr 127.0.0.1:7200 --max-clients 100
-    screen -dmS badvpn7300 badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 100
-fi
-
-# --- Setup iptables rules ---
-iptables -I INPUT -p udp --dport 5300 -j ACCEPT
-iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 5300
-
-# --- Disable IPv6 ---
-echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
-
+# rc.local
+# By default this script does nothing.
 exit 0
 END
 
 chmod +x /etc/rc.local
 systemctl enable rc-local
-systemctl start rc-local.service || true
+systemctl start rc-local.service
 
 # --- Set timezone GMT+7 ---
 ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
 # --- Disable AcceptEnv in SSH ---
 sed -i 's/AcceptEnv/#AcceptEnv/g' /etc/ssh/sshd_config
+systemctl enable sshd
 systemctl restart sshd
 
 # --- Update & Upgrade system ---
