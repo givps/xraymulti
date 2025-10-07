@@ -1,374 +1,165 @@
 #!/bin/bash
-# SL
-# ==========================================
-# Color
-RED='\033[0;31m'
-NC='\033[0m'
-GREEN='\033[0;32m'
-ORANGE='\033[0;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-LIGHT='\033[0;37m'
-# ==========================================
-# Getting
-MYIP=$(wget -qO- ipinfo.io/ip);
-echo "Checking VPS"
-IZIN=$( curl ipinfo.io/ip | grep $MYIP )
-if [ $MYIP = $MYIP ]; then
-echo -e "${NC}${GREEN}Permission Accepted...${NC}"
-else
-echo -e "${NC}${RED}Permission Denied!${NC}";
-echo -e "${NC}${LIGHT}Fuck You!!"
-exit 0
-fi
-clear
-source /var/lib/crot/ipvps.conf
-if [[ "$IP" = "" ]]; then
-domain=$(cat /etc/xray/domain)
-else
-domain=$IP
-fi
-tr="$(cat ~/log-install.txt | grep -w "Trojan WS " | cut -d: -f2|sed 's/ //g')"
-until [[ $user =~ ^[a-zA-Z0-9_]+$ && ${user_EXISTS} == '0' ]]; do
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-echo -e "\E[0;41;36m           XRAY ALL ACCOUNT          \E[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+set -euo pipefail
 
-		read -rp "User: " -e user
-		user_EXISTS=$(grep -w $user /etc/xray/config.json | wc -l)
+# ============================
+# XRAY Account Creator (jq-free)
+# ============================
 
-		if [[ ${user_EXISTS} == '1' ]]; then
-clear
-		echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-		echo -e "\E[0;41;36m           XRAY ALL ACCOUNT          \E[0m"
-		echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-			echo ""
-			echo "A client with the specified name was already created, please choose another name."
-			echo ""
-			echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-			read -n 1 -s -r -p "Press any key to back on menu"
-			menu
-		fi
-	done
-#
-#
+# Colors
+red='\e[1;31m'; green='\e[0;32m'; yellow='\e[1;33m'; blue='\e[1;34m'; nc='\e[0m'
+
+LOG="/etc/log-create-user.log"
+PUBLIC_HTML="/home/vps/public_html"
+CONFIG_FILE="/etc/xray/config.json"
+
+mkdir -p "$PUBLIC_HTML"
+touch "$LOG"
+
+# External IP & domain
+MYIP=$(wget -qO- ipv4.icanhazip.com 2>/dev/null || curl -s ifconfig.me 2>/dev/null || echo "127.0.0.1")
+domain=$(cat /etc/xray/domain 2>/dev/null || echo "$MYIP")
+
+# Prompt username
+while true; do
+    read -rp "Username: " user
+    user="${user// /}"
+    if [[ ! $user =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo -e "${red}Invalid username.${nc} Only letters, numbers, underscore."
+        continue
+    fi
+    # Check if user exists by scanning config.json
+    if grep -q "\"email\":\"$user\"" "$CONFIG_FILE" 2>/dev/null; then
+        echo -e "${red}User already exists. Choose another.${nc}"
+        continue
+    fi
+    break
+done
+
+# Expiry & UUID
+read -rp "Expired (days): " expired
+if ! [[ "$expired" =~ ^[0-9]+$ ]]; then
+    echo -e "${red}Invalid number of days.${nc}"
+    exit 1
+fi
+exp=$(date -d "$expired days" +"%Y-%m-%d")
 uuid=$(cat /proc/sys/kernel/random/uuid)
-read -p "Expired (days): " masaaktif
-exp=`date -d "$masaaktif days" +"%Y-%m-%d"`
-sed -i '/#trojanws$/a\#! '"$user $exp"'\
-},{"password": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
-sed -i '/#trojangrpc$/a\#! '"$user $exp"'\
-},{"password": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
 
-sed -i '/#vless$/a\#& '"$user $exp"'\
-},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
-sed -i '/#vlessgrpc$/a\#& '"$user $exp"'\
-},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
+# Defaults
+TLS_PORT=443
+GRPC_PORT=443
+SS_CIPHER="aes-128-gcm"
+BUG="bug.com"
 
-sed -i '/#vmess$/a\#& '"$user $exp"'\
-},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
-sed -i '/#vmessgrpc$/a\#& '"$user $exp"'\
-},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
-
-
-#
-systemctl restart xray
-#buatvless
-vlesslinkws="vless://${uuid}@${domain}:443?path=/xrayws&security=tls&encryption=none&type=ws#${user}"
-vlesslinknon="vless://${uuid}@${domain}:80?path=/xrayws&encryption=none&type=ws#${user}"
-vlesslinkgrpc="vless://${uuid}@${domain}:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=bug.com#${user}"
-
-#buattrojan
-trojanlinkgrpc="trojan://${uuid}@${domain}:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=bug.com#${user}"
-trojanlinkws="trojan://${uuid}@${domain}:443?path=/xraytrojanws&security=tls&host=bug.com&type=ws&sni=bug.com#${user}"
-#buatshadowsocks
-#
-cipher="aes-128-gcm"
-sed -i '/#ssws$/a\### '"$user $exp"'\
-},{"password": "'""$uuid""'","method": "'""$cipher""'","email": "'""$user""'"' /etc/xray/config.json
-sed -i '/#ssgrpc$/a\### '"$user $exp"'\
-},{"password": "'""$uuid""'","method": "'""$cipher""'","email": "'""$user""'"' /etc/xray/config.json
-echo $cipher:$uuid > /tmp/log
-shadowsocks_base64=$(cat /tmp/log)
-echo -n "${shadowsocks_base64}" | base64 > /tmp/log1
-shadowsocks_base64e=$(cat /tmp/log1)
-shadowsockslink="ss://${shadowsocks_base64e}@$domain:$tls?plugin=xray-plugin;mux=0;path=/xrayssws;host=$domain;tls#${user}"
-shadowsockslink1="ss://${shadowsocks_base64e}@$domain:$tls?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=$domain;tls#${user}"
-systemctl restart xray
-rm -rf /tmp/log
-rm -rf /tmp/log1
-cat > /home/vps/public_html/ss-ws-$user.txt <<-END
-{ 
- "dns": {
-    "servers": [
-      "8.8.8.8",
-      "8.8.4.4"
-    ]
-  },
- "inbounds": [
-   {
-      "port": 10808,
-      "protocol": "socks",
-      "settings": {
-        "auth": "noauth",
-        "udp": true,
-        "userLevel": 8
-      },
-      "sniffing": {
-        "destOverride": [
-          "http",
-          "tls"
-        ],
-        "enabled": true
-      },
-      "tag": "socks"
-    },
-    {
-      "port": 10809,
-      "protocol": "http",
-      "settings": {
-        "userLevel": 8
-      },
-      "tag": "http"
-    }
-  ],
-  "log": {
-    "loglevel": "none"
-  },
-  "outbounds": [
-    {
-      "mux": {
-        "enabled": true
-      },
-      "protocol": "shadowsocks",
-      "settings": {
-        "servers": [
-          {
-            "address": "$domain",
-            "level": 8,
-            "method": "$cipher",
-            "password": "$uuid",
-            "port": 443
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "security": "tls",
-        "tlsSettings": {
-          "allowInsecure": true,
-          "serverName": "isi_bug_disini"
-        },
-        "wsSettings": {
-          "headers": {
-            "Host": "$domain"
-          },
-          "path": "/xrayssws"
-        }
-      },
-      "tag": "proxy"
-    },
-    {
-      "protocol": "freedom",
-      "settings": {},
-      "tag": "direct"
-    },
-    {
-      "protocol": "blackhole",
-      "settings": {
-        "response": {
-          "type": "http"
-        }
-      },
-      "tag": "block"
-    }
-  ],
-  "policy": {
-    "levels": {
-      "8": {
-        "connIdle": 300,
-        "downlinkOnly": 1,
-        "handshake": 4,
-        "uplinkOnly": 1
-      }
-    },
-    "system": {
-      "statsOutboundUplink": true,
-      "statsOutboundDownlink": true
-    }
-  },
-  "routing": {
-    "domainStrategy": "Asls",
-"rules": []
-  },
-  "stats": {}
+# ----------------------
+# Add user to config.json (simple append)
+# ----------------------
+add_client() {
+    local proto="$1"
+    local block=""
+    case "$proto" in
+        vless)
+            block="{\"id\":\"$uuid\",\"email\":\"$user\"}"
+            ;;
+        vmess)
+            block="{\"id\":\"$uuid\",\"email\":\"$user\",\"alterId\":0}"
+            ;;
+        trojan)
+            block="{\"password\":\"$uuid\",\"email\":\"$user\"}"
+            ;;
+        ss)
+            block="{\"password\":\"$uuid\",\"method\":\"$SS_CIPHER\",\"email\":\"$user\"}"
+            ;;
+    esac
+    # Append block to clients array
+    sed -i "/\"$proto\" *: *{/,/clients *:/s/\(\]/\1,\n$block/" "$CONFIG_FILE"
 }
-END
-cat > /home/vps/public_html/ss-grpc-$user.txt <<-END
+
+for proto in vless vmess trojan ss; do
+    add_client "$proto"
+done
+
+# Restart XRAY
+systemctl restart xray
+
+# ----------------------
+# Build links
+# ----------------------
+vless_ws="vless://${uuid}@${domain}:${TLS_PORT}?path=/vless&security=tls&encryption=none&type=ws#${user}"
+vless_grpc="vless://${uuid}@${domain}:${GRPC_PORT}?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=${BUG}#${user}"
+
+# VMess base64 (manual JSON)
+vmess_ws_json='{"v":"2","ps":"'"$user"'","add":"'"$domain"'","port":'"$TLS_PORT',"id":"'"$uuid"'","aid":"0","net":"ws","type":"none","host":"","path":"/vmess"}'
+vmess_ws=$(echo -n "$vmess_ws_json" | base64 -w0)
+vmess_grpc_json='{"v":"2","ps":"'"$user"'","add":"'"$domain"'","port":'"$GRPC_PORT',"id":"'"$uuid"'","aid":"0","net":"grpc","type":"none","host":"","path":"","serviceName":"vmess-grpc"}'
+vmess_grpc=$(echo -n "$vmess_grpc_json" | base64 -w0)
+
+trojan_ws="trojan://${uuid}@${domain}:${TLS_PORT}?path=/trojan&security=tls&host=${BUG}&type=ws&sni=${BUG}#${user}"
+trojan_grpc="trojan://${uuid}@${domain}:${GRPC_PORT}?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=${BUG}#${user}"
+
+ss_b64=$(echo -n "$SS_CIPHER:$uuid" | base64 -w0)
+ss_ws="ss://${ss_b64}@${domain}:${TLS_PORT}?plugin=xray-plugin;mux=0;path=/ssws;host=${domain};tls#${user}"
+ss_grpc="ss://${ss_b64}@${domain}:${TLS_PORT}?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=${domain};tls#${user}"
+
+# ----------------------
+# Save TXT/JSON
+# ----------------------
+cat > "${PUBLIC_HTML}/ss-ws-${user}.json" <<EOF
 {
-    "dns": {
-    "servers": [
-      "8.8.8.8",
-      "8.8.4.4"
-    ]
-  },
- "inbounds": [
-   {
-      "port": 10808,
-      "protocol": "socks",
-      "settings": {
-        "auth": "noauth",
-        "udp": true,
-        "userLevel": 8
-      },
-      "sniffing": {
-        "destOverride": [
-          "http",
-          "tls"
-        ],
-        "enabled": true
-      },
-      "tag": "socks"
-    },
-    {
-      "port": 10809,
-      "protocol": "http",
-      "settings": {
-        "userLevel": 8
-      },
-      "tag": "http"
-    }
-  ],
-  "log": {
-    "loglevel": "none"
-  },
-  "outbounds": [
-    {
-      "mux": {
-        "enabled": true
-      },
-      "protocol": "shadowsocks",
-      "settings": {
-        "servers": [
-          {
-            "address": "$domain",
-            "level": 8,
-            "method": "$cipher",
-            "password": "$uuid",
-            "port": 443
-          }
-        ]
-      },
-      "streamSettings": {
-        "grpcSettings": {
-          "multiMode": true,
-          "serviceName": "ss-grpc"
-        },
-        "network": "grpc",
-        "security": "tls",
-        "tlsSettings": {
-          "allowInsecure": true,
-          "serverName": "isi_bug_disini"
-        }
-      },
-      "tag": "proxy"
-    },
-    {
-      "protocol": "freedom",
-      "settings": {},
-      "tag": "direct"
-    },
-    {
-      "protocol": "blackhole",
-      "settings": {
-        "response": {
-          "type": "http"
-        }
-      },
-      "tag": "block"
-    }
-  ],
-  "policy": {
-    "levels": {
-      "8": {
-        "connIdle": 300,
-        "downlinkOnly": 1,
-        "handshake": 4,
-        "uplinkOnly": 1
-      }
-    },
-    "system": {
-      "statsOutboundUplink": true,
-      "statsOutboundDownlink": true
-    }
-  },
-  "routing": {
-    "domainStrategy": "Asls",
-"rules": []
-  },
-  "stats": {}
+  "server":"$domain",
+  "server_port":$TLS_PORT,
+  "password":"$uuid",
+  "method":"$SS_CIPHER",
+  "plugin":"xray-plugin",
+  "plugin_opts":"path=/ssws;host=$domain;tls",
+  "name":"$user"
 }
-END
+EOF
 
-#
-#buatvmess
-clear
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
-echo -e "====== XRAY MANTAP Multi Port=======" | tee -a /etc/log-create-user.log
-echo -e "INFORMASI AKUN VPN XRAY" | tee -a /etc/log-create-user.log
-echo -e "IP: $MYIP" | tee -a /etc/log-create-user.log
-echo -e "Host/Domain: $domain" | tee -a /etc/log-create-user.log
-echo -e "Password/ID: $uuid" | tee -a /etc/log-create-user.log
-echo -e "====== Service Port =======" | tee -a /etc/log-create-user.log
-echo -e "Websocket TLS  : 443" | tee -a /etc/log-create-user.log
-echo -e "Websocket HTTP : 80" | tee -a /etc/log-create-user.log
-echo -e "GRPC TLS       : 443" | tee -a /etc/log-create-user.log
-echo -e "*Note OPOK: opok only supports coremeta"
-echo -e "*Note SHADOWSOCKS: gunakan custom config atau plugin xray"
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
+cat > "${PUBLIC_HTML}/ss-grpc-${user}.json" <<EOF
+{
+  "server":"$domain",
+  "server_port":$TLS_PORT,
+  "password":"$uuid",
+  "method":"$SS_CIPHER",
+  "plugin":"xray-plugin",
+  "plugin_opts":"serviceName=ss-grpc;host=$domain;tls",
+  "name":"$user"
+}
+EOF
 
-echo -e "Protokol VPN: TROJAN" | tee -a /etc/log-create-user.log
-echo -e "Network: WS/GRPC" | tee -a /etc/log-create-user.log
-echo -e "====== Path =======" | tee -a /etc/log-create-user.log
-echo -e "=> WS TLS : /xraytrojanws" | tee -a /etc/log-create-user.log
-echo -e "=> GRPC   : trojan-grpc" | tee -a /etc/log-create-user.log
-echo -e "=> OPOK   : ws://bugcom/xraytrojanws" | tee -a /etc/log-create-user.log
-echo -e "====== Import Config From Clipboard =======" | tee -a /etc/log-create-user.log
-echo -e "Link Config WS TLS   : $trojanlinkws" | tee -a /etc/log-create-user.log
-echo -e "Link Config GRPC TLS : $trojanlinkgrpc" | tee -a /etc/log-create-user.log
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
+chmod 644 "${PUBLIC_HTML}/ss-"*.json
 
-echo -e "Protokol VPN: SHADOWSOCKS" | tee -a /etc/log-create-user.log
-echo -e "Network: WS/GRPC" | tee -a /etc/log-create-user.log
-echo -e "Method Cipers : aes-128-gcm" | tee -a /etc/log-create-user.log
-echo -e "====== Path =======" | tee -a /etc/log-create-user.log
-echo -e "=> WS TLS : /xrayssws" | tee -a /etc/log-create-user.log
-echo -e "=> GRPC   : ss-grpc" | tee -a /etc/log-create-user.log
-echo -e "=> OPOK   : ws://bugcom/xrayssws" | tee -a /etc/log-create-user.log
-echo -e "======Custom Import Config From URL =======" | tee -a /etc/log-create-user.log
-echo -e "URL Custom Config WS TLS   : http://${domain}:89/ss-ws-$user.txt" | tee -a /etc/log-create-user.log
-echo -e "URL Custom Config GRPC TLS : http://${domain}:89/ss-grpc-$user.txt" | tee -a /etc/log-create-user.log
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
+# TXT quick links
+echo -e "$vless_ws\n$vless_grpc" > "${PUBLIC_HTML}/vless-${user}.txt"
+echo -e "$vmess_ws\n$vmess_grpc" > "${PUBLIC_HTML}/vmess-${user}.txt"
+echo -e "$trojan_ws\n$trojan_grpc" > "${PUBLIC_HTML}/trojan-${user}.txt"
+echo -e "$ss_ws\n$ss_grpc" > "${PUBLIC_HTML}/ss-${user}.txt"
 
-echo -e "Protokol VPN: VLESS" | tee -a /etc/log-create-user.log
-echo -e "Network: WS/GRPC" | tee -a /etc/log-create-user.log
-echo -e "====== Path =======" | tee -a /etc/log-create-user.log
-echo -e "=> WS TLS : /xrayws" | tee -a /etc/log-create-user.log
-echo -e "=> GRPC   : vless-grpc" | tee -a /etc/log-create-user.log
-echo -e "=> OPOK   : ws://bugcom/xrayws" | tee -a /etc/log-create-user.log
-echo -e "====== Import Config From Clipboard =======" | tee -a /etc/log-create-user.log
-echo -e "Link Config WS TLS    : $vlesslinkws" | tee -a /etc/log-create-user.log
-echo -e "Link Config GRPC TLS  : $vlesslinkgrpc" | tee -a /etc/log-create-user.log
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
-echo -e "Protokol VPN: VMESS" | tee -a /etc/log-create-user.log
-echo -e "Alter ID: 0" | tee -a /etc/log-create-user.log
-echo -e "Network: WS/GRPC" | tee -a /etc/log-create-user.log
-echo -e "====== Path =======" | tee -a /etc/log-create-user.log
-echo -e "=> WS TLS : /xrayvws" | tee -a /etc/log-create-user.log
-echo -e "=> GRPC   : vmess-grpc" | tee -a /etc/log-create-user.log
-echo -e "=> OPOK   : ws://bugcom/xrayvws" | tee -a /etc/log-create-user.log
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a /etc/log-create-user.log
-echo -e "SCRIPT MANTAP XRAY" | tee -a /etc/log-create-user.log
-echo "" | tee -a /etc/log-create-user.log
-cd
+chmod 644 "${PUBLIC_HTML}"/*.txt
+
+# ----------------------
+# Log & output
+# ----------------------
+{
+echo -e "${red}=========================================${nc}"
+echo -e "${blue}            XRAY ACCOUNT  ${nc}"
+echo -e "${red}=========================================${nc}"
+echo "XRAY User Created: $user"
+echo "UUID/Password: $uuid"
+echo "Expired: $exp"
+echo "VLESS WS: $vless_ws"
+echo "VLESS gRPC: $vless_grpc"
+echo "VMess WS: $vmess_ws"
+echo "VMess gRPC: $vmess_grpc"
+echo "Trojan WS: $trojan_ws"
+echo "Trojan gRPC: $trojan_grpc"
+echo "Shadowsocks WS: $ss_ws"
+echo "Shadowsocks gRPC: $ss_grpc"
+echo -e "${red}=========================================${nc}"
+} | tee -a "$LOG"
+
+read -n1 -s -r -p "Press any key to return to menu..."
+
+menu
+
+
