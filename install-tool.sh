@@ -92,45 +92,15 @@ apt update -y && apt install -y \
 echo "" >> .profile
 echo "menu" >> .profile
 
-# remove unnecessary files
+# install webserver
+apt -y install nginx
 cd
-apt autoclean -y
-apt -y remove --purge unscd
-apt-get -y --purge remove samba*;
-apt-get -y --purge remove apache2*;
-apt-get -y --purge remove bind9*;
-apt-get -y remove sendmail*
-apt autoremove -y
-
-echo -e "${green}[INFO] Starting NGINX mainline installation...${nc}"
-# Remove old NGINX
-echo -e "${green}[INFO] Removing old NGINX...${nc}"
-sudo apt remove -y nginx nginx-common
-sudo apt update -y
-
-# Install dependencies
-echo -e "${green}[INFO] Installing dependencies...${nc}"
-sudo apt install -y curl gnupg2 ca-certificates lsb-release
-
-# Detect distro (debian / ubuntu)
-DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
-CODENAME=$(lsb_release -cs)
-
-# Add NGINX mainline repository
-echo -e "${green}[INFO] Adding NGINX mainline repository for $DISTRO ${CODENAME}...${nc}"
-echo "deb http://nginx.org/packages/mainline/$DISTRO/ $CODENAME nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
-curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
-
-sudo apt update -y
-
-# Install NGINX mainline
-echo -e "${green}[INFO] Installing NGINX mainline...${nc}"
-sudo apt install -y nginx
-
-# Enable and restart NGINX
-sudo systemctl daemon-reload
-sudo systemctl enable nginx
-sudo systemctl restart nginx
+rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
+wget -O /etc/nginx/nginx.conf "https://${Server_URL}/nginx.conf"
+mkdir -p /home/vps/public_html
+wget -O /etc/nginx/conf.d/vps.conf "https://${Server_URL}/vps.conf"
+/etc/init.d/nginx restart
 
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
@@ -145,6 +115,16 @@ apt install resolvconf -y
 #start resolvconf service
 systemctl start resolvconf.service
 systemctl enable resolvconf.service
+
+# remove unnecessary files
+cd
+apt autoclean -y
+apt -y remove --purge unscd
+apt-get -y --purge remove samba*;
+apt-get -y --purge remove apache2*;
+apt-get -y --purge remove bind9*;
+apt-get -y remove sendmail*
+apt autoremove -y
 
 echo -e "[ ${green}ok${nc} ] Restarting resolvconf"
 /etc/init.d/resolvconf restart >/dev/null 2>&1
