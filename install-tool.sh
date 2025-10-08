@@ -156,19 +156,15 @@ sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting nginx"
 /etc/init.d/nginx restart >/dev/null 2>&1
 sleep 1
-echo -e "[ ${green}ok${nc} ] Restarting cron "
-/etc/init.d/cron restart >/dev/null 2>&1
-sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting fail2ban"
 /etc/init.d/fail2ban restart >/dev/null 2>&1
 sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting resolvconf"
 /etc/init.d/resolvconf restart >/dev/null 2>&1
 sleep 1
-echo -e "[ ${green}ok${nc} ] Restarting vnstat"
-/etc/init.d/vnstat restart >/dev/null 2>&1
-history -c
-echo "unset HISTFILE" >> /etc/profile
+#echo -e "[ ${green}ok${nc} ] Restarting cron "
+#/etc/init.d/cron restart >/dev/null 2>&1
+#sleep 1
 
 echo -e "${green}[INFO]${nc} Install Tool completed..."
 
