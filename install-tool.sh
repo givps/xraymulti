@@ -56,6 +56,10 @@ systemctl start rc-local.service
 # --- Set timezone GMT+7 ---
 ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
+# --- Disable ipv6 ---
+echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
+sed -i '$ i\echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6' /etc/rc.local
+
 # --- Disable AcceptEnv in SSH ---
 sed -i 's/AcceptEnv/#AcceptEnv/g' /etc/ssh/sshd_config
 systemctl enable sshd
@@ -72,12 +76,12 @@ apt-get remove --purge exim4 -y
 # --- Install essential tools ---
 apt -y install wget curl
 
-# --- Profile settings for vps user ---
-apt update -y && apt install -y \
-  curl socat xz-utils wget apt-transport-https gnupg lsb-release dnsutils \
-  cron bash-completion ntpdate chrony zip pwgen openssl netcat iptables \
-  iptables-persistent jq
-echo "" >> .profile
+# install netfilter-persistent
+apt-get install netfilter-persistent
+
+# install tool
+apt-get --reinstall --fix-missing install -y bzip2 gzip coreutils wget screen rsyslog iftop htop net-tools zip unzip wget net-tools curl nano sed screen gnupg gnupg1 bc apt-transport-https build-essential dirmngr libxml-parser-perl neofetch git lsof
+echo "clear" >> .profile
 echo "menu" >> .profile
 
 # Remove old NGINX
@@ -103,6 +107,32 @@ cd /home/vps/public_html
 wget -q -O index.html "https://${link}/index" || echo "Failed to download index.html"
 chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
+
+# setting vnstat
+apt -y install vnstat
+/etc/init.d/vnstat restart
+apt -y install libsqlite3-dev
+wget https://github.com/vergoh/vnstat/releases/download/v2.6/vnstat-2.6.tar.gz
+tar zxvf vnstat-2.6.tar.gz
+cd vnstat-2.6
+./configure --prefix=/usr --sysconfdir=/etc && make && make install
+cd
+vnstat -u -i $NET
+sed -i 's/Interface "'""eth0""'"/Interface "'""$NET""'"/g' /etc/vnstat.conf
+chown vnstat:vnstat /var/lib/vnstat -R
+systemctl enable vnstat
+/etc/init.d/vnstat restart
+rm -f /root/vnstat-2.6.tar.gz
+rm -rf /root/vnstat-2.6
+
+# install fail2ban
+apt -y install fail2ban
+
+# Instal DDOS Flate
+
+# banner /etc/issue.net
+wget -q -O /etc/issue.net "https://${link}/issues.net" && chmod +x /etc/issue.net
+echo "Banner /etc/issue.net" >>/etc/ssh/sshd_config
 
 # install resolvconf service
 apt install resolvconf -y
