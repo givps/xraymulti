@@ -134,7 +134,6 @@ mkdir -p /etc/xray
 retry bash acme.sh --installcert -d "$domain" \
     --fullchainpath /etc/xray/xray.crt \
     --keypath /etc/xray/xray.key \
-    --reloadcmd "systemctl restart xray.service"
 
 chmod 600 /etc/xray/xray.key
 
