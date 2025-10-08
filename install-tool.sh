@@ -83,12 +83,13 @@ echo "clear" >> .profile
 echo "menu" >> .profile
 
 # Remove old NGINX
-echo -e "${green}[INFO] Removing old NGINX...${nc}"
+echo -e "${green}[INFO]${nc} Removing old NGINX..."
 apt remove -y nginx nginx-common
 apt purge -y nginx nginx-common
 apt autoremove -y
 apt update -y
 
+echo -e "${green}[INFO]${nc} Install NGINX..."
 # install webserver
 apt -y install nginx
 rm -f /etc/nginx/sites-enabled/default
