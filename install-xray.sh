@@ -168,7 +168,6 @@ echo -e "Key        : /etc/xray/xray.key"
 # install xray core
 systemctl unmask xray.service
 systemctl daemon-reload
-systemctl restart xray.service
 
 echo -e "${green}XRAY Core Installer${nc}"
 echo -e "${yellow}Progress...${nc}"
