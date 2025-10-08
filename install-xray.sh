@@ -165,10 +165,6 @@ echo -e "${green}✅ ACME.sh Cloudflare setup completed successfully.${nc}"
 echo -e "Certificate: /etc/xray/xray.crt"
 echo -e "Key        : /etc/xray/xray.key"
 
-# install xray core
-systemctl unmask xray.service
-systemctl daemon-reload
-
 echo -e "${green}XRAY Core Installer${nc}"
 echo -e "${yellow}Progress...${nc}"
 
