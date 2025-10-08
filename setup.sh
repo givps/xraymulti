@@ -10,6 +10,7 @@ if [ "${EUID}" -ne 0 ]; then
 fi
 
 rm -f install-tool.sh
+rm -f cf
 rm -f install-xray.sh
 rm -f install-menu.sh
 rm -f log-install.txt
