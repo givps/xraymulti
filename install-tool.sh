@@ -128,7 +128,7 @@ rm -rf /root/vnstat-2.6
 # install fail2ban
 apt -y install fail2ban
 
-# Instal DDOS Flate
+# Install DDOS Flate
 if [ -d '/usr/local/ddos' ]; then
 	echo; echo; echo "Please un-install the previous version first"
 	exit 0
