@@ -213,10 +213,10 @@ else
 fi
 
 # Download Xray Core according to architecture
-wget -O /usr/local/bin/xray "$BASE_URL/$FILE_NAME"
+wget -O /etc/core/xray "$BASE_URL/$FILE_NAME"
 
 # Make it executable
-chmod +x /usr/local/bin/xray
+chmod +x /etc/core/xray
 
 # Verify installation
 echo "Xray Core successfully downloaded for architecture $ARCH"
@@ -914,7 +914,7 @@ User=root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
-ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
+ExecStart=/etc/core/xray run -config /etc/xray/config.json
 Restart=on-failure
 RestartSec=3s
 RestartPreventExitStatus=23
@@ -937,7 +937,7 @@ User=root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
-ExecStart=/usr/local/bin/xray run -config /etc/xray/%i.json
+ExecStart=/etc/core/xray run -config /etc/xray/%i.json
 Restart=on-failure
 RestartSec=3s
 RestartPreventExitStatus=23
