@@ -959,8 +959,8 @@ cat >/etc/nginx/conf.d/xray.conf <<EOF
              listen 8880;
              listen [::]:8880;	
              server_name 127.0.0.1 localhost;
-             ssl_certificate /usr/local/etc/xray/xray.crt;
-             ssl_certificate_key /usr/local/etc/xray/xray.key;
+             ssl_certificate /etc/xray/xray.crt;
+             ssl_certificate_key /etc/xray/xray.key;
              ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
              ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
              root /usr/share/nginx/html;
@@ -1041,4 +1041,3 @@ systemctl restart nginx
 
 # Restart done
 echo -e "[ ${green}OK${nc} ] Restart All Service Done..."
-
