@@ -107,6 +107,7 @@ chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
 
 # setting vnstat
+NET=$(ip route | grep default | awk '{print $5}')
 apt -y install vnstat
 /etc/init.d/vnstat restart
 apt -y install libsqlite3-dev
