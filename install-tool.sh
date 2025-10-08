@@ -62,8 +62,6 @@ sed -i '$ i\echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6' /etc/rc.local
 
 # --- Disable AcceptEnv in SSH ---
 sed -i 's/AcceptEnv/#AcceptEnv/g' /etc/ssh/sshd_config
-systemctl enable sshd
-systemctl restart sshd
 
 # --- Update & Upgrade system ---
 echo -e "${green}[INFO] Updating system...${nc}"
