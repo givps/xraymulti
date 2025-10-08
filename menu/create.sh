@@ -76,30 +76,20 @@ done
 # Generate Nginx config
 # ----------------------
 cat > "$NGINX_CONF" <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
-
-    ssl_certificate /etc/xray/xray.crt;
-    ssl_certificate_key /etc/xray/xray.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    location /vless { proxy_pass http://unix:/run/xray/vless_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
-    location /vless-grpc { grpc_pass grpc://unix:/run/xray/vless_grpc.sock; grpc_set_header Host \$host; }
-    location /vmess { proxy_pass http://unix:/run/xray/vmess_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
-    location /vmess-grpc { grpc_pass grpc://unix:/run/xray/vmess_grpc.sock; grpc_set_header Host \$host; }
-    location /trojan { proxy_pass http://unix:/run/xray/trojan_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
-    location /trojan-grpc { grpc_pass grpc://unix:/run/xray/trojan_grpc.sock; grpc_set_header Host \$host; }
-    location /ssws { proxy_pass http://unix:/run/xray/ss_ws.sock; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
-    location /ss-grpc { grpc_pass grpc://unix:/run/xray/ss_grpc.sock; grpc_set_header Host \$host; }
-}
+    server {
+             listen 80;
+             listen [::]:80;
+             listen 8080;
+             listen [::]:8080;
+             listen 8880;
+             listen [::]:8880;	
+             server_name 127.0.0.1 localhost;
+             ssl_certificate /etc/xray/xray.crt;
+             ssl_certificate_key /etc/xray/xray.key;
+             ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
+             ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+             root /usr/share/nginx/html;
+        }
 EOF
 
 nginx -t && systemctl restart nginx
