@@ -175,7 +175,6 @@ echo -e "[ ${green}INFO${nc} ] XRAY Core Installation Begin . . . "
 apt update -y
 apt upgrade -y
 apt install socat -y
-apt install python -y
 apt install curl -y
 apt install wget -y
 apt install sed -y
