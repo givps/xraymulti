@@ -91,7 +91,6 @@ apt update -y
 
 # install webserver
 apt -y install nginx
-cd
 rm -f /etc/nginx/sites-enabled/default
 rm -f /etc/nginx/sites-available/default
 wget -O /etc/nginx/nginx.conf "https://${link}/nginx.conf"
@@ -140,7 +139,6 @@ systemctl start resolvconf.service
 systemctl enable resolvconf.service
 
 # remove unnecessary files
-cd
 apt autoclean -y
 apt -y remove --purge unscd
 apt-get -y --purge remove samba*;
@@ -150,7 +148,6 @@ apt-get -y remove sendmail*
 apt autoremove -y
 
 # finishing
-cd
 chown -R www-data:www-data /home/vps/public_html
 sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting nginx"
