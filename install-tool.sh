@@ -139,8 +139,8 @@ echo 'Config file is at /usr/local/ddos/ddos.conf'
 echo 'Please send in your comments and/or suggestions to zaf@vsnl.com'
 
 # banner /etc/issue.net
-wget -q -O /etc/issue.net "https://${link}/issues.net" && chmod +x /etc/issue.net
-echo "Banner /etc/issue.net" >>/etc/ssh/sshd_config
+#wget -q -O /etc/issue.net "https://${link}/issues.net" && chmod +x /etc/issue.net
+#echo "Banner /etc/issue.net" >>/etc/ssh/sshd_config
 
 # blockir torrent
 iptables -A FORWARD -m string --string "get_peers" --algo bm -j DROP
