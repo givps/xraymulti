@@ -182,15 +182,55 @@ apt install nano -y
 apt install python3 -y
 apt install curl socat xz-utils wget apt-transport-https gnupg gnupg2 gnupg1 dnsutils lsb-release -y 
 apt install socat cron bash-completion ntpdate -y
-ntpdate pool.ntp.org
-apt -y install chrony
-timedatectl set-ntp true
-systemctl enable chronyd && systemctl restart chronyd
-systemctl enable chrony && systemctl restart chrony
-timedatectl set-timezone Asia/Kuala_Lumpur
-chronyc sourcestats -v
-chronyc tracking -v
-date
+set -e
+echo -e "\n[ INFO ] Installing and configuring Chrony NTP service...\n"
+# Install chrony if not present
+if ! command -v chronyd >/dev/null 2>&1; then
+    apt update -y >/dev/null 2>&1
+    apt install -y chrony >/dev/null 2>&1
+fi
+# Backup old config
+if [ -f /etc/chrony/chrony.conf ]; then
+    cp /etc/chrony/chrony.conf /etc/chrony/chrony.conf.bak
+fi
+# Write new config
+cat > /etc/chrony/chrony.conf <<EOF
+# Chrony NTP configuration (Auto by givps)
+pool 0.id.pool.ntp.org iburst
+pool 1.id.pool.ntp.org iburst
+pool 2.id.pool.ntp.org iburst
+pool 3.id.pool.ntp.org iburst
+
+# Additional reliable global servers
+server time.google.com iburst
+server time.cloudflare.com iburst
+server ntp.ubuntu.com iburst
+
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+makestep 1.0 3
+bindcmdaddress 127.0.0.1
+bindcmdaddress ::1
+keyfile /etc/chrony/chrony.keys
+logdir /var/log/chrony
+EOF
+# Ensure log directory exists
+mkdir -p /var/log/chrony
+# Unmask & enable chrony
+systemctl unmask chrony.service >/dev/null 2>&1 || true
+systemctl daemon-reload
+systemctl enable chrony.service >/dev/null 2>&1
+systemctl restart chrony.service
+sleep 3
+echo -e "\n[ INFO ] Chrony service status:\n"
+systemctl --no-pager --full status chrony.service | head -n 10
+echo -e "\n[ INFO ] Checking NTP synchronization sources:\n"
+chronyc sources -v || echo "Chrony not responding yet. Please wait 1–2 minutes."
+echo -e "\n✅ Chrony installation and configuration complete!"
+echo -e "→ Config file: /etc/chrony/chrony.conf"
+echo -e "→ Backup: /etc/chrony/chrony.conf.bak"
+echo -e "→ Check sync: chronyc tracking\n"
+
 apt install zip -y
 apt install curl pwgen openssl netcat cron -y
 
@@ -1039,3 +1079,4 @@ systemctl restart nginx
 
 # Restart done
 echo -e "[ ${green}OK${nc} ] Restart All Service Done..."
+
