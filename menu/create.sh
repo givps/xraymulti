@@ -1,129 +1,97 @@
 #!/bin/bash
 # ==========================================
-# XRAY Multi-Protocol User + Auto Nginx Config
+# XRAY Multi-Protocol User Generator (No JSON Edit)
 # ==========================================
 set -euo pipefail
 
 # ----------------------
 # Colors
 # ----------------------
-red='\e[1;31m'; green='\e[0;32m'; yellow='\e[1;33m'; blue='\e[1;34m'; nc='\e[0m'
+red='\e[1;31m'
+green='\e[0;32m'
+yellow='\e[1;33m'
+blue='\e[1;34m'
+nc='\e[0m'
 
 # ----------------------
 # Paths
 # ----------------------
-CONFIG_FILE="/etc/xray/config.json"
+USER_DB="/etc/xray/user.txt"
 PUBLIC_HTML="/home/vps/public_html"
 LOG="/etc/log-create-user.log"
-NGINX_CONF="/etc/nginx/conf.d/xray.conf"
-
 mkdir -p "$PUBLIC_HTML"
-touch "$LOG"
+touch "$USER_DB" "$LOG"
 
 # ----------------------
-# Domain
+# Domain & Ports
 # ----------------------
-MYIP=$(curl -s ifconfig.me || echo "127.0.0.1")
+MYIP=$(curl -s ipv4.icanhazip.com || echo "127.0.0.1")
 DOMAIN=$(cat /etc/xray/domain 2>/dev/null || echo "$MYIP")
 BUG="bug.com"
+TLS_PORT=443
+NTLS_PORT=80
 
 # ----------------------
-# Prompt user
+# User input
 # ----------------------
 while true; do
-    read -rp "Username: " USER
-    USER="${USER// /}"
-    [[ ! $USER =~ ^[a-zA-Z0-9_]+$ ]] && echo -e "${red}Invalid username${nc}" && continue
+    read -rp "Enter Username: " USER
+    [[ -z "$USER" || "$USER" =~ [^a-zA-Z0-9_] ]] && echo -e "${red}Invalid username${nc}" && continue
+    grep -qw "$USER" "$USER_DB" && echo -e "${red}User already exists${nc}" && exit 1
     break
 done
 
-read -rp "Expired (days): " EXPIRED
-[[ ! "$EXPIRED" =~ ^[0-9]+$ ]] && echo -e "${red}Invalid number of days${nc}" && exit 1
-EXP_DATE=$(date -d "$EXPIRED days" +"%Y-%m-%d")
-
-# ----------------------
-# UUID/Password
-# ----------------------
+read -rp "Expire in (days): " DAYS
+[[ ! "$DAYS" =~ ^[0-9]+$ ]] && echo -e "${red}Invalid number${nc}" && exit 1
+EXP_DATE=$(date -d "$DAYS days" +"%Y-%m-%d")
 UUID=$(cat /proc/sys/kernel/random/uuid)
-SS_CIPHER="aes-128-gcm"
 
 # ----------------------
-# Function add client
+# Save to database
 # ----------------------
-add_client() {
-    PROTO="$1"
-    case "$PROTO" in
-        trojan|trojangrpc)
-            echo "{\"password\":\"$UUID\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
-            ;;
-        vless|vmess)
-            echo "{\"id\":\"$UUID\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
-            ;;
-        ssws|ssgrpc)
-            echo "{\"password\":\"$UUID\",\"method\":\"$SS_CIPHER\",\"email\":\"$USER\"}" >> /tmp/${PROTO}_clients.tmp
-            ;;
-    esac
-}
+echo "$USER|$UUID|$EXP_DATE" >> "$USER_DB"
 
 # ----------------------
-# Add user to all protocols
+# Generate links
 # ----------------------
-for proto in trojan trojangrpc vless vmess ssws ssgrpc; do
-    add_client "$proto"
-done
+VLESS_TLS="vless://$UUID@$DOMAIN:$TLS_PORT?path=/vless&security=tls&encryption=none&type=ws&sni=$BUG#$USER"
+VLESS_NTLS="vless://$UUID@$DOMAIN:$NTLS_PORT?path=/vless&security=none&encryption=none&type=ws#$USER"
 
-# ----------------------
-# Generate Nginx config
-# ----------------------
-cat > "$NGINX_CONF" <<EOF
-    server {
-             listen 80;
-             listen [::]:80;
-             listen 8080;
-             listen [::]:8080;
-             listen 8880;
-             listen [::]:8880;	
-             server_name $domain *.$domain;
-             ssl_certificate /etc/xray/xray.crt;
-             ssl_certificate_key /etc/xray/xray.key;
-             ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
-             ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
-             root /usr/share/nginx/html;
-        }
-EOF
+VMESS_TLS_JSON=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":$TLS_PORT,\"id\":\"$UUID\",\"aid\":0,\"net\":\"ws\",\"type\":\"none\",\"host\":\"$BUG\",\"path\":\"/vmess\",\"tls\":\"tls\"}")
+VMESS_NTLS_JSON=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":$NTLS_PORT,\"id\":\"$UUID\",\"aid\":0,\"net\":\"ws\",\"type\":\"none\",\"host\":\"$BUG\",\"path\":\"/vmess\",\"tls\":\"none\"}")
+VMESS_TLS="vmess://$(echo "$VMESS_TLS_JSON" | base64 -w0)"
+VMESS_NTLS="vmess://$(echo "$VMESS_NTLS_JSON" | base64 -w0)"
 
-nginx -t && systemctl restart nginx
-systemctl restart xray
+TROJAN_TLS="trojan://$UUID@$DOMAIN:$TLS_PORT?path=/trojan&security=tls&type=ws&host=$BUG&sni=$BUG#$USER"
+TROJAN_NTLS="trojan://$UUID@$DOMAIN:$NTLS_PORT?path=/trojan&security=none&type=ws#$USER"
 
 # ----------------------
-# Generate quick-links
+# Save user info to HTML
 # ----------------------
-VLESS_WS="vless://$UUID@$DOMAIN:443?path=/vless&security=tls&encryption=none&type=ws#$USER"
-VLESS_GRPC="vless://$UUID@$DOMAIN:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=$BUG#$USER"
-
-VMESS_WS=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":443,\"id\":\"$UUID\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"/vmess\"}" | base64 -w0)
-VMESS_GRPC=$(echo "{\"v\":\"2\",\"ps\":\"$USER\",\"add\":\"$DOMAIN\",\"port\":443,\"id\":\"$UUID\",\"aid\":\"0\",\"net\":\"grpc\",\"type\":\"none\",\"host\":\"\",\"path\":\"\",\"serviceName\":\"vmess-grpc\"}" | base64 -w0)
-
-TROJAN_WS="trojan://$UUID@$DOMAIN:443?path=/trojan&security=tls&host=$BUG&type=ws&sni=$BUG#$USER"
-TROJAN_GRPC="trojan://$UUID@$DOMAIN:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=$BUG#$USER"
-
-SS_B64=$(echo -n "$SS_CIPHER:$UUID" | base64 -w0)
-SS_WS="ss://$SS_B64@$DOMAIN:443?plugin=xray-plugin;mux=0;path=/ssws;host=$DOMAIN;tls#$USER"
-SS_GRPC="ss://$SS_B64@$DOMAIN:443?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=$DOMAIN;tls#$USER"
+USER_FILE="$PUBLIC_HTML/$USER.txt"
+{
+  echo "USER: $USER"
+  echo "UUID: $UUID"
+  echo "Expired: $EXP_DATE"
+  echo ""
+  echo "VLESS TLS: $VLESS_TLS"
+  echo "VLESS NonTLS: $VLESS_NTLS"
+  echo ""
+  echo "VMESS TLS: $VMESS_TLS"
+  echo "VMESS NonTLS: $VMESS_NTLS"
+  echo ""
+  echo "TROJAN TLS: $TROJAN_TLS"
+  echo "TROJAN NonTLS: $TROJAN_NTLS"
+} > "$USER_FILE"
+chmod 644 "$USER_FILE"
 
 # ----------------------
-# Save to HTML folder
+# Restart services
 # ----------------------
-for proto in vless vmess trojan ss; do
-  case "$proto" in
-    vless) echo -e "$VLESS_WS\n$VLESS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
-    vmess) echo -e "$VMESS_WS\n$VMESS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
-    trojan) echo -e "$TROJAN_WS\n$TROJAN_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
-    ss) echo -e "$SS_WS\n$SS_GRPC" > "$PUBLIC_HTML/${proto}-$USER.txt" ;;
-  esac
-done
-
-chmod 644 "$PUBLIC_HTML"/*.txt
+systemctl unmask xray 2>/dev/null || true
+systemctl enable xray 2>/dev/null || true
+systemctl restart xray 2>/dev/null || echo -e "${red}[!] Failed to restart Xray${nc}"
+systemctl restart nginx 2>/dev/null || echo -e "${red}[!] Failed to restart Nginx${nc}"
 
 # ----------------------
 # Log & output
@@ -136,22 +104,18 @@ echo "User: $USER"
 echo "UUID/Password: $UUID"
 echo "Expired: $EXP_DATE"
 echo -e "${red}=========================================${nc}"
-echo "VLESS WS: $VLESS_WS"
+echo "VLESS WS (TLS): $VLESS_TLS"
 echo -e "${red}=========================================${nc}"
-echo "VLESS gRPC: $VLESS_GRPC"
+echo "VLESS WS (NonTLS): $VLESS_NTLS"
 echo -e "${red}=========================================${nc}"
-echo "VMess WS: $VMESS_WS"
+echo "VMess WS (TLS): $VMESS_TLS"
 echo -e "${red}=========================================${nc}"
-echo "VMess gRPC: $VMESS_GRPC"
+echo "VMess WS (NonTLS): $VMESS_NTLS"
 echo -e "${red}=========================================${nc}"
-echo "Trojan WS: $TROJAN_WS"
+echo "Trojan WS (TLS): $TROJAN_TLS"
 echo -e "${red}=========================================${nc}"
-echo "Trojan gRPC: $TROJAN_GRPC"
-echo -e "${red}=========================================${nc}"
-echo "Shadowsocks WS: $SS_WS"
-echo -e "${red}=========================================${nc}"
-echo "Shadowsocks gRPC: $SS_GRPC"
+echo "Trojan WS (NonTLS): $TROJAN_NTLS"
 echo -e "${red}=========================================${nc}"
 } | tee -a "$LOG"
 
-echo -e "\nDone. Configs saved in $PUBLIC_HTML"
+echo -e "\n${green}✅ Done.${nc} Configs saved in ${yellow}$PUBLIC_HTML/${USER}.txt${nc}"
