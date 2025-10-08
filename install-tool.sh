@@ -104,7 +104,7 @@ wget -O /etc/nginx/conf.d/vps.conf "https://${link}/vps.conf"
 # --- Setup web root ---
 mkdir -p /home/vps/public_html
 cd /home/vps/public_html
-wget -q -O index.html "https://${link}/index" || echo "Failed to download index.html"
+wget -q -O index.html "https://${link}/index"
 chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
 
@@ -134,6 +134,23 @@ apt -y install fail2ban
 wget -q -O /etc/issue.net "https://${link}/issues.net" && chmod +x /etc/issue.net
 echo "Banner /etc/issue.net" >>/etc/ssh/sshd_config
 
+# blockir torrent
+iptables -A FORWARD -m string --string "get_peers" --algo bm -j DROP
+iptables -A FORWARD -m string --string "announce_peer" --algo bm -j DROP
+iptables -A FORWARD -m string --string "find_node" --algo bm -j DROP
+iptables -A FORWARD -m string --algo bm --string "BitTorrent" -j DROP
+iptables -A FORWARD -m string --algo bm --string "BitTorrent protocol" -j DROP
+iptables -A FORWARD -m string --algo bm --string "peer_id=" -j DROP
+iptables -A FORWARD -m string --algo bm --string ".torrent" -j DROP
+iptables -A FORWARD -m string --algo bm --string "announce.php?passkey=" -j DROP
+iptables -A FORWARD -m string --algo bm --string "torrent" -j DROP
+iptables -A FORWARD -m string --algo bm --string "announce" -j DROP
+iptables -A FORWARD -m string --algo bm --string "info_hash" -j DROP
+iptables-save > /etc/iptables.up.rules
+iptables-restore -t < /etc/iptables.up.rules
+netfilter-persistent save
+netfilter-persistent reload
+
 # install resolvconf service
 apt install resolvconf -y
 
@@ -151,12 +168,27 @@ apt-get -y --purge remove bind9*;
 apt-get -y remove sendmail*
 apt autoremove -y
 
+# finishing
+cd
+chown -R www-data:www-data /home/vps/public_html
+sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting nginx"
 /etc/init.d/nginx restart >/dev/null 2>&1
-
+sleep 1
+echo -e "[ ${green}ok${nc} ] Restarting cron "
+/etc/init.d/cron restart >/dev/null 2>&1
+sleep 1
+echo -e "[ ${green}ok${nc} ] Restarting fail2ban"
+/etc/init.d/fail2ban restart >/dev/null 2>&1
+sleep 1
 echo -e "[ ${green}ok${nc} ] Restarting resolvconf"
 /etc/init.d/resolvconf restart >/dev/null 2>&1
+sleep 1
+echo -e "[ ${green}ok${nc} ] Restarting vnstat"
+/etc/init.d/vnstat restart >/dev/null 2>&1
+history -c
+echo "unset HISTFILE" >> /etc/profile
 
-echo -e "${green}[INFO] VPS setup completed successfully!${nc}"
+echo -e "${green}[INFO]${nc} Install Tool completed..."
 
 
