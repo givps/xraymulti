@@ -57,3 +57,9 @@ echo -e "${red}=========================================${nc}"
 } | tee -a "$LOG"
 
 echo -e "${green}User '$USER' has been removed successfully.${nc}"
+# Opsi kembali ke menu setelah selesai
+if type menu >/dev/null 2>&1; then
+    read -n1 -s -r -p "Press any key to return to menu..."
+    echo ""
+    menu
+fi
