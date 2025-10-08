@@ -107,34 +107,6 @@ chown -R www-data:www-data /home/vps/public_html
 chmod -R g+rw /home/vps/public_html
 
 # setting vnstat
-# Detect default network interface
-NET=$(ip route | grep default | awk '{print $5}')
-echo "Detected network interface: $NET"
-# Install dependencies
-apt update
-apt -y install build-essential libsqlite3-dev wget
-# Download and extract vnStat 2.6
-cd /root
-wget -q https://github.com/vergoh/vnstat/releases/download/v2.6/vnstat-2.6.tar.gz
-tar zxvf vnstat-2.6.tar.gz
-cd vnstat-2.6
-# Compile and install
-./configure --prefix=/usr --sysconfdir=/etc
-make
-make install
-# Clean up source
-cd /root
-rm -rf vnstat-2.6 vnstat-2.6.tar.gz
-# Initialize database for the detected interface (vnStat 2.6 uses --create instead of -u)
-vnstat --create -i $NET
-# Update vnStat config with the detected interface
-sed -i "s/Interface \"eth0\"/Interface \"$NET\"/g" /etc/vnstat.conf
-# Set proper permissions
-chown vnstat:vnstat /var/lib/vnstat -R
-# Enable and restart vnStat service
-systemctl enable vnstat
-systemctl restart vnstat
-echo "vnStat installation and setup complete for interface $NET"
 
 # install fail2ban
 apt -y install fail2ban
